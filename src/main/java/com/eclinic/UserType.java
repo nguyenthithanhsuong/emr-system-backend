@@ -2,7 +2,8 @@ package com.eclinic;
 
 public enum UserType {
     DOCTOR,
-    PATIENT;
+    PATIENT,
+    NURSE;
 
     public static UserType from(String rawValue) {
         String normalized = rawValue == null ? "" : rawValue.trim().toUpperCase();
@@ -11,6 +12,10 @@ public enum UserType {
         }
         if ("PATIENT".equals(normalized)) {
             return PATIENT;
+        }
+
+        if ("NURSE".equals(normalized)) {
+            return NURSE;
         }
         throw new IllegalArgumentException("Unsupported user type: " + rawValue);
     }

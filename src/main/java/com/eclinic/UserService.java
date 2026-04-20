@@ -11,13 +11,15 @@ public class UserService {
 
     public UserService(Database database) {
         this.factories = new EnumMap<UserType, UserFactory>(UserType.class);
-        this.factories.put(UserType.DOCTOR, new UserFactory.DoctorCreator(database));
-        this.factories.put(UserType.PATIENT, new UserFactory.PatientCreator(database));
+        this.factories.put(UserType.DOCTOR, new DoctorCreator(database));
+        this.factories.put(UserType.PATIENT, new PatientCreator(database));
+        // Khi mở rộng Nurse, thêm dòng sau:
+        this.factories.put(UserType.NURSE, new NurseCreator(database));
     }
 
-    public User register(String userType, String fullName, String specialtyOrCondition) {
+    public User register(String userType, String fullName, String userInformation) {
         UserFactory factory = createFactory(UserType.from(userType));
-        UserRegistrationRequest request = new UserRegistrationRequest(fullName, specialtyOrCondition);
+        UserRegistrationRequest request = new UserRegistrationRequest(fullName, userInformation);
         return factory.registerAccount(request);
     }
 
@@ -31,19 +33,19 @@ public class UserService {
 
     public static final class UserRegistrationRequest {
         private final String fullName;
-        private final String specialtyOrCondition;
+        private final String userInformation;
 
-        public UserRegistrationRequest(String fullName, String specialtyOrCondition) {
+        public UserRegistrationRequest(String fullName, String userInformation) {
             this.fullName = fullName == null ? "" : fullName.trim();
-            this.specialtyOrCondition = specialtyOrCondition == null ? "" : specialtyOrCondition.trim();
+            this.userInformation = userInformation == null ? "" : userInformation.trim();
         }
 
         public String fullName() {
             return fullName;
         }
 
-        public String specialtyOrCondition() {
-            return specialtyOrCondition;
+        public String userInformation() {
+            return userInformation;
         }
     }
 }

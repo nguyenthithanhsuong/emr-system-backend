@@ -26,7 +26,7 @@
         </div>
         <div class="stat-card">
           <span>Sản phẩm</span>
-          <strong>Doctor, Patient</strong>
+          <strong>Doctor, Patient, +Nurse</strong>
         </div>
         <div class="stat-card">
           <span>Mục tiêu</span>
@@ -51,6 +51,12 @@
             <button type="button" class="role-btn" data-role="Patient">Bệnh nhân</button>
           </div>
 
+          <!-- Nurse extension - uncomment when you want to enable Nurse in the UI. -->
+          <div class="role-switch nurse-extension" role="group" aria-label="Loại user mở rộng">
+            <button type="button" class="role-btn" data-role="Nurse">Y tá</button>
+          </div>
+         
+
           <label>
             Họ và tên
             <input id="fullName" type="text" placeholder="" required />
@@ -58,7 +64,7 @@
 
           <label id="dynamicLabel">
             Chuyên khoa
-            <input id="specialtyOrCondition" type="text" placeholder="" required />
+            <input id="userInformation" type="text" placeholder="" required />
           </label>
 
           <button type="submit" class="primary-btn">Tạo tài khoản</button>
@@ -83,21 +89,23 @@
 
         <div class="result-card" id="resultCard">
           <div class="result-top">
-            <span class="result-role" id="resultRole">Doctor</span>
-            <span class="result-id" id="resultId">#001</span>
+            <span class="result-role" id="resultRole">User</span>
+            <span class="result-id" id="resultId">#000</span>
           </div>
-          <h3 id="resultName">BS. Nguyễn Văn A</h3>
-          <p id="resultMeta">Tim mạch</p>
+          <h3 id="resultName">User Name</h3>
+          <p id="resultMeta">Information</p>
           <div class="table-grid">
             <div class="table-box">
               <span>Bảng Users</span>
-              <strong>Đã lưu</strong>
+              <strong>Đang chờ</strong>
             </div>
             <div class="table-box">
               <span id="secondaryTableLabel">Bảng Doctor</span>
-              <strong>Đã lưu</strong>
+              <strong>Đang chờ</strong>
             </div>
           </div>
+      
+         
         </div>
 
         <div class="log-card">

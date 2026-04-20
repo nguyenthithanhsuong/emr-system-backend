@@ -8,7 +8,7 @@ public class Client {
         this.registrationService = registrationService;
     }
 
-    public User createNewAccount(String userType, String fullName, String specialtyOrCondition) {
-        return registrationService.register(userType, fullName, specialtyOrCondition);
+    public User createNewAccount(String userType, String fullName, String userInformation) {
+        return registrationService.register(userType, fullName, userInformation);
     }
 }

@@ -9,7 +9,7 @@ const state = {
 const form = document.getElementById('userForm');
 const roleButtons = document.querySelectorAll('.role-btn');
 const dynamicLabel = document.getElementById('dynamicLabel');
-const dynamicInput = document.getElementById('specialtyOrCondition');
+const dynamicInput = document.getElementById('userInformation');
 const resultCard = document.getElementById('resultCard');
 const resultRole = document.getElementById('resultRole');
 const resultId = document.getElementById('resultId');
@@ -83,7 +83,7 @@ async function registerUser(formData) {
   const payload = new URLSearchParams();
   payload.set('userType', selectedRole);
   payload.set('fullName', formData.fullName);
-  payload.set('specialtyOrCondition', formData.specialtyOrCondition);
+  payload.set('userInformation', formData.userInformation);
 
   const response = await fetch(`${API_BASE}/register`, {
     method: 'POST',
@@ -111,16 +111,23 @@ function updateRoleUI(role, shouldLog) {
   if (role === 'Doctor') {
     dynamicLabel.firstChild.textContent = ' Chuyên khoa';
     dynamicInput.value = dynamicInput.value;
-    secondaryTableLabel.textContent = 'Bảng Bác sĩ';
+    secondaryTableLabel.textContent = 'User Key / User Info';
     if (shouldLog !== false) {
       addLog('Chọn Doctor -> sẽ dùng DoctorCreator.', 'info');
     }
-  } else {
+  } else if (role === 'Patient') {
     dynamicLabel.firstChild.textContent = ' Tình trạng bệnh';
     dynamicInput.value = dynamicInput.value;
-    secondaryTableLabel.textContent = 'Bảng Bệnh nhân';
+    secondaryTableLabel.textContent = 'User Key / User Info';
     if (shouldLog !== false) {
       addLog('Chọn Patient -> sẽ dùng PatientCreator.', 'info');
+    }
+  } else if (role === 'Nurse') {
+    dynamicLabel.firstChild.textContent = ' Khoa';
+    dynamicInput.value = dynamicInput.value;
+    secondaryTableLabel.textContent = 'User Key / User Info';
+    if (shouldLog !== false) {
+      addLog('Chọn Nurse -> sẽ dùng NurseCreator.', 'info');
     }
   }
 }
@@ -169,7 +176,7 @@ function showLatestUser(user, formData) {
   resultRole.textContent = user.role;
   resultId.textContent = `#${String(user.id).padStart(3, '0')}`;
   resultName.textContent = user.fullName;
-  resultMeta.textContent = formData.specialtyOrCondition;
+  resultMeta.textContent = formData.userInformation;
   resultCard.classList.remove('flash');
   void resultCard.offsetWidth;
   resultCard.classList.add('flash');
@@ -186,7 +193,7 @@ form.addEventListener('submit', async (event) => {
 
   const formData = {
     fullName: document.getElementById('fullName').value.trim(),
-    specialtyOrCondition: document.getElementById('specialtyOrCondition').value.trim(),
+    userInformation: document.getElementById('userInformation').value.trim(),
   };
 
   try {
@@ -195,7 +202,7 @@ form.addEventListener('submit', async (event) => {
     addLog(`2. UserService chọn ${user.role}Creator theo userType.`, 'info');
     addLog('3. validateRequest() hoàn tất, dữ liệu hợp lệ.', 'info');
     addLog(`4. createUser() tạo ${user.role}User cụ thể.`, 'info');
-    addLog(`5. saveProfile() lưu vào Users và bảng ${user.role}.`, 'info');
+    addLog('5. saveProfile() chỉ lưu vào Users (kèm role key).', 'info');
     addLog('6. audit() ghi nhận account vừa tạo.', 'info');
     const snapshot = await fetchSnapshot();
     state.users = snapshot.users || [];

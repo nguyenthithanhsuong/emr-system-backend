@@ -22,8 +22,6 @@ public class Database {
     private static final String DATA_FILE_PATH = "data/eclinic-data.txt";
     private final AtomicInteger currentUserId = new AtomicInteger(0);
     private final List<User.UserRecord> users = Collections.synchronizedList(new ArrayList<User.UserRecord>());
-    private final List<DoctorUser.DoctorRecord> doctors = Collections.synchronizedList(new ArrayList<DoctorUser.DoctorRecord>());
-    private final List<PatientUser.PatientRecord> patients = Collections.synchronizedList(new ArrayList<PatientUser.PatientRecord>());
 
     public Database() {
         loadFromDisk();
@@ -38,26 +36,8 @@ public class Database {
         persist();
     }
 
-    public synchronized void addDoctorRecord(DoctorUser.DoctorRecord doctorRecord) {
-        doctors.add(doctorRecord);
-        persist();
-    }
-
-    public synchronized void addPatientRecord(PatientUser.PatientRecord patientRecord) {
-        patients.add(patientRecord);
-        persist();
-    }
-
     public List<User.UserRecord> getUsers() {
         return users;
-    }
-
-    public List<DoctorUser.DoctorRecord> getDoctors() {
-        return doctors;
-    }
-
-    public List<PatientUser.PatientRecord> getPatients() {
-        return patients;
     }
 
     private void loadFromDisk() {
@@ -75,34 +55,32 @@ public class Database {
                     continue;
                 }
 
-                String[] parts = line.split("\\|", 4);
+                String[] parts = line.split("\\|", 6);
                 if (parts.length < 2) {
                     continue;
                 }
 
                 String type = parts[0];
-                if ("USER".equals(type) && parts.length == 4) {
+                if ("USER".equals(type) && parts.length >= 4) {
                     int id = parseInteger(parts[1]);
                     String fullName = decode(parts[2]);
-                    String role = decode(parts[3]);
-                    users.add(new User.UserRecord(id, fullName, role));
+                    String roleKey;
+                    String role;
+                    String userInformation;
+
+                    if (parts.length >= 6) {
+                        roleKey = decode(parts[3]);
+                        role = decode(parts[4]);
+                        userInformation = decode(parts[5]);
+                    } else {
+                        role = decode(parts[3]);
+                        roleKey = role + " - User";
+                        userInformation = "";
+                    }
+
+                    users.add(new User.UserRecord(id, fullName, roleKey, role, userInformation));
                     updateCurrentUserId(id);
                     continue;
-                }
-
-                if ("DOCTOR".equals(type) && parts.length == 3) {
-                    int userId = parseInteger(parts[1]);
-                    String specialty = decode(parts[2]);
-                    doctors.add(new DoctorUser.DoctorRecord(userId, specialty));
-                    updateCurrentUserId(userId);
-                    continue;
-                }
-
-                if ("PATIENT".equals(type) && parts.length == 3) {
-                    int userId = parseInteger(parts[1]);
-                    String medicalCondition = decode(parts[2]);
-                    patients.add(new PatientUser.PatientRecord(userId, medicalCondition));
-                    updateCurrentUserId(userId);
                 }
             }
         } catch (IOException ignored) {
@@ -129,15 +107,12 @@ public class Database {
         try {
             writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(dataFile), "UTF-8"));
             for (User.UserRecord user : users) {
-                writer.write("USER|" + user.id() + "|" + encode(user.fullName()) + "|" + encode(user.role()));
-                writer.newLine();
-            }
-            for (DoctorUser.DoctorRecord doctor : doctors) {
-                writer.write("DOCTOR|" + doctor.userId() + "|" + encode(doctor.specialty()));
-                writer.newLine();
-            }
-            for (PatientUser.PatientRecord patient : patients) {
-                writer.write("PATIENT|" + patient.userId() + "|" + encode(patient.medicalCondition()));
+                writer.write("USER|"
+                        + user.id()
+                        + "|" + encode(user.fullName())
+                        + "|" + encode(user.roleKey())
+                        + "|" + encode(user.role())
+                        + "|" + encode(user.userInformation()));
                 writer.newLine();
             }
         } catch (IOException ignored) {
@@ -193,16 +168,6 @@ public class Database {
         System.out.println("Users:");
         for (User.UserRecord user : users) {
             System.out.println("- " + user);
-        }
-
-        System.out.println("Doctors:");
-        for (DoctorUser.DoctorRecord doctor : doctors) {
-            System.out.println("- " + doctor);
-        }
-
-        System.out.println("Patients:");
-        for (PatientUser.PatientRecord patient : patients) {
-            System.out.println("- " + patient);
         }
     }
 }

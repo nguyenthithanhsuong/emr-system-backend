@@ -10,11 +10,6 @@ javac -encoding UTF-8 -d target/classes src/main/java/com/eclinic/*.java
 ## Run
 java -cp target/classes com.eclinic.App
 
-## One-command run on Windows PowerShell
-```powershell
-.\run-backend.ps1
-```
-
 ## Mục tiêu
 
 Demo Factory Method Design Pattern cho use case **Create User** trong hệ thống Electronic Clinic.

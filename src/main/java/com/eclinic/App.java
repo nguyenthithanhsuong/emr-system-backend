@@ -151,10 +151,10 @@ public class App {
         Map<String, String> form = parseFormBody(new ByteArrayInputStream(request.body.getBytes("UTF-8")));
         String userType = getOrEmpty(form, "userType");
         String fullName = getOrEmpty(form, "fullName");
-        String specialtyOrCondition = getOrEmpty(form, "specialtyOrCondition");
+        String userInformation = getOrEmpty(form, "userInformation");
 
         try {
-            User user = client.createNewAccount(userType, fullName, specialtyOrCondition);
+            User user = client.createNewAccount(userType, fullName, userInformation);
             String json = "{"
                     + "\"id\":" + user.getId() + ","
                     + "\"fullName\":\"" + escapeJson(user.getFullName()) + "\"," 
@@ -185,7 +185,9 @@ public class App {
             usersJson.append("{")
                     .append("\"id\":").append(user.id()).append(",")
                     .append("\"fullName\":\"").append(escapeJson(user.fullName())).append("\",")
-                    .append("\"role\":\"").append(escapeJson(user.role())).append("\"")
+                    .append("\"role\":\"").append(escapeJson(user.role())).append("\",")
+                    .append("\"roleKey\":\"").append(escapeJson(user.roleKey())).append("\",")
+                    .append("\"userInformation\":\"").append(escapeJson(user.userInformation())).append("\"")
                     .append("}");
             if (i < database.getUsers().size() - 1) {
                 usersJson.append(",");
@@ -194,28 +196,16 @@ public class App {
         usersJson.append("]");
 
         StringBuilder detailsJson = new StringBuilder("[");
-        boolean hasPrevious = false;
-        for (DoctorUser.DoctorRecord doctor : database.getDoctors()) {
-            if (hasPrevious) {
+        for (int i = 0; i < database.getUsers().size(); i++) {
+            User.UserRecord user = database.getUsers().get(i);
+            if (i > 0) {
                 detailsJson.append(",");
             }
             detailsJson.append("{")
-                    .append("\"id\":").append(doctor.userId()).append(",")
-                    .append("\"type\":\"Doctor\",")
-                    .append("\"detail\":\"").append(escapeJson(doctor.specialty())).append("\"")
+                    .append("\"id\":").append(user.id()).append(",")
+                    .append("\"type\":\"").append(escapeJson(user.role())).append("\",")
+                    .append("\"detail\":\"").append(escapeJson(user.userInformation())).append("\"")
                     .append("}");
-            hasPrevious = true;
-        }
-        for (PatientUser.PatientRecord patient : database.getPatients()) {
-            if (hasPrevious) {
-                detailsJson.append(",");
-            }
-            detailsJson.append("{")
-                    .append("\"id\":").append(patient.userId()).append(",")
-                    .append("\"type\":\"Patient\",")
-                    .append("\"detail\":\"").append(escapeJson(patient.medicalCondition())).append("\"")
-                    .append("}");
-            hasPrevious = true;
         }
         detailsJson.append("]");
 
