@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Clinic Dashboard</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <nav>
+        <a href="index.html">Dashboard</a>
+        <a href="doctors.html">Doctors</a>
+        <a href="patients.html">Patients</a>
+        <a href="appointments.html">Appointments</a>
+        <a href="medicines.html">Medicines</a>
+        <a href="medical-records.html">Medical Records</a>
+        <a href="prescriptions.html">Prescriptions</a>
+    </nav>
+
+    <div id="message"></div>
+
+    <h1>Dashboard</h1>
+    
+    <div id="stats">
+        <h2>System Statistics</h2>
+        <p>
+            <span style="font-size: 1.5rem;">Users</span>
+            <strong id="totalUsers">-</strong>
+            <span style="display: block; font-size: 0.9rem; color: #666; margin-top: 0.5rem;">Total Users</span>
+        </p>
+        <p>
+            <span style="font-size: 1.5rem;">Doctors</span>
+            <strong id="totalDoctors">-</strong>
+            <span style="display: block; font-size: 0.9rem; color: #666; margin-top: 0.5rem;">Total Doctors</span>
+        </p>
+        <p>
+            <span style="font-size: 1.5rem;">Patients</span>
+            <strong id="totalPatients">-</strong>
+            <span style="display: block; font-size: 0.9rem; color: #666; margin-top: 0.5rem;">Total Patients</span>
+        </p>
+        <p>
+            <span style="font-size: 1.5rem;">Today</span>
+            <strong id="todayAppointments">-</strong>
+            <span style="display: block; font-size: 0.9rem; color: #666; margin-top: 0.5rem;">Today's Appointments</span>
+        </p>
+        <p>
+            <span style="font-size: 1.5rem;">Revenue</span>
+            <strong id="revenue">-</strong>
+            <span style="display: block; font-size: 0.9rem; color: #666; margin-top: 0.5rem;">Revenue</span>
+        </p>
+    </div>
+
+    <div id="logs">
+        <h2>Test Logs</h2>
+        <pre id="testLog" style="height: 400px; overflow-y: auto;"></pre>
+    </div>
+
+    <button onclick="runDashboardTests()" style="margin-bottom: 2rem;">Run Dashboard Tests</button>
+
+    <script src="common.js"></script>
+    <script>
+        let logMessages = [];
+
+        function log(msg) {
+            logMessages.push(msg);
+            document.getElementById('testLog').textContent = logMessages.join('\n');
+        }
+
+        async function loadDashboard() {
+            try {
+                log('Loading dashboard data...');
+                const stats = await apiGet('/dashboard');
+                document.getElementById('totalUsers').textContent = stats.totalUsers;
+                document.getElementById('totalDoctors').textContent = stats.totalDoctors;
+                document.getElementById('totalPatients').textContent = stats.totalPatients;
+                document.getElementById('todayAppointments').textContent = stats.todayAppointments;
+                document.getElementById('revenue').textContent = stats.revenue;
+                log('[OK] Dashboard loaded successfully');
+            } catch (error) {
+                log('[FAIL] Failed to load dashboard: ' + error.message);
+            }
+        }
+
+        async function runDashboardTests() {
+            logMessages = [];
+            log('=== Dashboard Test Suite ===');
+            log('');
+
+            // Test 1: Load Dashboard
+            await loadDashboard();
+            log('');
+
+            // Test 2: Fetch All Users
+            log('Fetching all users...');
+            try {
+                const users = await apiGet('/patients');
+                log(`[OK] Found ${users.length} patients`);
+                users.slice(0, 2).forEach(u => log(`  - ${u.fullName} (ID: ${u.id})`));
+            } catch (error) {
+                log('[FAIL] Failed to fetch patients: ' + error.message);
+            }
+            log('');
+
+            // Test 3: Fetch All Doctors
+            log('Fetching all doctors...');
+            try {
+                const doctors = await apiGet('/doctors');
+                log(`[OK] Found ${doctors.length} doctors`);
+                doctors.slice(0, 2).forEach(d => log(`  - ${d.fullName} (${d.specialty})`));
+            } catch (error) {
+                log('[FAIL] Failed to fetch doctors: ' + error.message);
+            }
+            log('');
+
+            // Test 4: Fetch All Medicines
+            log('Fetching all medicines...');
+            try {
+                const meds = await apiGet('/medicines');
+                log(`[OK] Found ${meds.length} medicines`);
+                meds.slice(0, 2).forEach(m => log(`  - ${m.name} (Stock: ${m.stockQuantity})`));
+            } catch (error) {
+                log('[FAIL] Failed to fetch medicines: ' + error.message);
+            }
+
+            log('');
+            log('=== Tests Complete ===');
+        }
+
+        // Load dashboard on page load
+        window.addEventListener('load', loadDashboard);
+    </script>
+</body>
+</html>

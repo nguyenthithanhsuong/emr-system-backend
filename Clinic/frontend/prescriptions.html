@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Prescriptions</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <nav>
+        <a href="index.html">Dashboard</a>
+        <a href="doctors.html">Doctors</a>
+        <a href="patients.html">Patients</a>
+        <a href="appointments.html">Appointments</a>
+        <a href="medicines.html">Medicines</a>
+        <a href="medical-records.html">Medical Records</a>
+        <a href="prescriptions.html">Prescriptions</a>
+    </nav>
+
+    <div id="message"></div>
+
+    <h1>Prescription Management</h1>
+
+    <div>
+        <h2>Create New Prescription</h2>
+        <form onsubmit="handleAddPrescription(event)">
+            <input type="number" id="medicalRecordId" placeholder="Medical Record ID" required>
+            <textarea id="notes" placeholder="Prescription Notes (Optional)"></textarea>
+            <input type="number" id="totalPrice" placeholder="Total Price" step="0.01" required>
+            <button type="submit">Create Prescription</button>
+        </form>
+    </div>
+
+    <div>
+        <h2>Prescriptions List</h2>
+        <button onclick="loadPrescriptions()">Refresh List</button>
+        <div id="prescriptionsList"></div>
+    </div>
+
+    <div>
+        <h2>Add Prescription Detail</h2>
+        <form onsubmit="handleAddDetail(event)">
+            <input type="number" id="prescriptionId" placeholder="Prescription ID" required>
+            <input type="number" id="medicineId" placeholder="Medicine ID" required>
+            <input type="number" id="quantity" placeholder="Quantity" required>
+            <input type="text" id="dosage" placeholder="Dosage (e.g., 2 tablets twice daily)">
+            <button type="submit">Add Medicine to Prescription</button>
+        </form>
+    </div>
+
+    <div id="testLog">
+        <h2>Test Results</h2>
+        <pre id="output" style="height: 400px; overflow-y: auto;"></pre>
+    </div>
+
+    <button onclick="runCRUDTests()" style="margin-bottom: 2rem;">Run CRUD Tests</button>
+
+    <script src="common.js"></script>
+    <script>
+        let logMessages = [];
+        let allPrescriptions = [];
+
+        function log(msg) {
+            logMessages.push(msg);
+            document.getElementById('output').textContent = logMessages.join('\n');
+        }
+
+        async function loadPrescriptions() {
+            try {
+                const prescriptions = await apiGet('/prescriptions');
+                await renderPrescriptions(prescriptions);
+            } catch (error) {
+                showMessage('Failed to load prescriptions: ' + error.message, 'error');
+            }
+        }
+
+        async function renderPrescriptions(prescriptions) {
+            if (!prescriptions || prescriptions.length === 0) {
+                document.getElementById('prescriptionsList').innerHTML = '<div class="card"><div class="card-body"><p class="text-center">No prescriptions found.</p></div></div>';
+                return;
+            }
+
+            const prescriptionsWithDetails = await Promise.all(prescriptions.map(async (prescription) => {
+                try {
+                    const details = await apiGet('/prescriptions/details?prescriptionId=' + prescription.id);
+                    return { ...prescription, details: Array.isArray(details) ? details : [] };
+                } catch (error) {
+                    return { ...prescription, details: [] };
+                }
+            }));
+
+            allPrescriptions = prescriptionsWithDetails;
+
+            let html = '<div class="card-grid">';
+            prescriptionsWithDetails.forEach((prescription) => {
+                const details = Array.isArray(prescription.details) ? prescription.details : [];
+                html += '<div class="card">';
+                html += '<div class="card-header">Prescription #' + prescription.id + '</div>';
+                html += '<div class="card-body">';
+                html += '<div class="card-field">';
+                html += '<label>Medical Record ID</label>';
+                html += '<div class="card-field-value">#' + prescription.medicalRecordId + '</div>';
+                html += '</div>';
+                html += '<div class="card-field">';
+                html += '<label>Total Price</label>';
+                html += '<div class="card-field-value">$' + Number(prescription.totalPrice || 0).toFixed(2) + '</div>';
+                html += '</div>';
+                html += '<div class="card-field">';
+                html += '<label>Notes</label>';
+                html += '<div class="card-field-value">' + escapeHtml(prescription.notes || 'None') + '</div>';
+                html += '</div>';
+                html += '<div class="card-field">';
+                html += '<label>Created At</label>';
+                html += '<div class="card-field-value">' + escapeHtml(prescription.createdAt || '') + '</div>';
+                html += '</div>';
+                html += '<div class="card-field">';
+                html += '<label>Details</label>';
+                if (details.length === 0) {
+                    html += '<div class="card-field-value" style="color: #999;">No medicines added yet.</div>';
+                } else {
+                    html += '<div class="detail-grid">';
+                    details.forEach((detail) => {
+                        html += '<div class="card" style="border-top-color: #9b59b6;">';
+                        html += '<div class="card-body" style="padding: 1rem;">';
+                        html += '<div class="card-field">';
+                        html += '<label>Medicine ID</label>';
+                        html += '<div class="card-field-value">#' + detail.medicineId + '</div>';
+                        html += '</div>';
+                        html += '<div class="card-field">';
+                        html += '<label>Quantity</label>';
+                        html += '<div class="card-field-value">' + detail.quantity + '</div>';
+                        html += '</div>';
+                        html += '<div class="card-field">';
+                        html += '<label>Dosage</label>';
+                        html += '<div class="card-field-value">' + escapeHtml(detail.dosage || 'None') + '</div>';
+                        html += '</div>';
+                        html += '</div>';
+                        html += '<div class="card-footer">';
+                        html += '<button type="button" onclick="deletePrescriptionDetail(' + detail.id + ')">Delete Detail</button>';
+                        html += '</div>';
+                        html += '</div>';
+                    });
+                    html += '</div>';
+                }
+                html += '</div>';
+                html += '<div class="card-footer">';
+                html += '<button type="button" onclick="deletePrescription(' + prescription.id + ')">Delete Prescription</button>';
+                html += '</div>';
+                html += '</div>';
+            });
+            html += '</div>';
+
+            document.getElementById('prescriptionsList').innerHTML = html;
+        }
+
+        function escapeHtml(value) {
+            return String(value)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        async function handleAddPrescription(event) {
+            event.preventDefault();
+            try {
+                const data = {
+                    medicalRecordId: parseInt(document.getElementById('medicalRecordId').value),
+                    notes: document.getElementById('notes').value || null,
+                    totalPrice: parseFloat(document.getElementById('totalPrice').value)
+                };
+                const result = await apiPost('/prescriptions', data);
+                showMessage('Prescription created successfully!', 'success');
+                event.target.reset();
+                loadPrescriptions();
+            } catch (error) {
+                showMessage('Failed to create prescription: ' + error.message, 'error');
+            }
+        }
+
+        async function handleAddDetail(event) {
+            event.preventDefault();
+            try {
+                const data = {
+                    prescriptionId: parseInt(document.getElementById('prescriptionId').value),
+                    medicineId: parseInt(document.getElementById('medicineId').value),
+                    quantity: parseInt(document.getElementById('quantity').value),
+                    dosage: document.getElementById('dosage').value || null
+                };
+                const result = await apiPost('/prescriptions/details', data);
+                showMessage('Medicine added to prescription!', 'success');
+                event.target.reset();
+                loadPrescriptions();
+            } catch (error) {
+                showMessage('Failed to add medicine to prescription: ' + error.message, 'error');
+            }
+        }
+
+        async function deletePrescription(id) {
+            try {
+                await apiDelete('/prescriptions/' + id);
+                showMessage('Prescription deleted successfully!', 'success');
+                loadPrescriptions();
+            } catch (error) {
+                showMessage('Failed to delete prescription: ' + error.message, 'error');
+            }
+        }
+
+        async function deletePrescriptionDetail(id) {
+            try {
+                await apiDelete('/prescriptions/details/' + id);
+                showMessage('Prescription detail deleted successfully!', 'success');
+                loadPrescriptions();
+            } catch (error) {
+                showMessage('Failed to delete prescription detail: ' + error.message, 'error');
+            }
+        }
+
+        async function runCRUDTests() {
+            logMessages = [];
+            log('=== Prescriptions CRUD Test Suite ===');
+            log('');
+
+            try {
+                // Test 1: Create Prescription
+                log('Test 1: Creating a prescription...');
+                const newPrescription = {
+                    medicalRecordId: 1,
+                    notes: 'Take with food',
+                    totalPrice: 45.99
+                };
+                const result = await apiPost('/prescriptions', newPrescription);
+                const prescId = result.id;
+                log('[OK] Created prescription with ID: ' + prescId);
+                log('');
+
+                log('Test 1b: Loading prescriptions list...');
+                const list = await apiGet('/prescriptions');
+                log('[OK] Loaded ' + list.length + ' prescriptions');
+                log('');
+
+                // Test 2: Add Prescription Detail
+                log('Test 2: Adding medicine to prescription...');
+                const detailData = {
+                    prescriptionId: prescId,
+                    medicineId: 1,
+                    quantity: 2,
+                    dosage: '2 tablets twice daily'
+                };
+                await apiPost('/prescriptions/details', detailData);
+                log('[OK] Added medicine to prescription');
+                log('');
+
+                // Test 3: Add Another Medicine
+                log('Test 3: Adding another medicine to prescription...');
+                const detailData2 = {
+                    prescriptionId: prescId,
+                    medicineId: 2,
+                    quantity: 1,
+                    dosage: '1 tablet at bedtime'
+                };
+                await apiPost('/prescriptions/details', detailData2);
+                log('[OK] Added second medicine to prescription');
+                log('');
+
+            } catch (error) {
+                log('[FAIL] Test failed: ' + error.message);
+            }
+
+            log('');
+            log('=== Tests Complete ===');
+            loadPrescriptions();
+        }
+
+        window.addEventListener('load', loadPrescriptions);
+    </script>
+</body>
+</html>

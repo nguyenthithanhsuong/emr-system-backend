@@ -1,0 +1,127 @@
+package com.eclinic.api;
+
+import com.sun.net.httpserver.HttpExchange;
+import com.eclinic.dao.DoctorDAO;
+import com.eclinic.models.Doctor;
+import java.io.IOException;
+import java.util.List;
+
+public class DoctorsHandler extends BaseHandler {
+
+    public void handle(HttpExchange exchange) throws IOException {
+        String method = exchange.getRequestMethod();
+        String path = exchange.getRequestURI().getPath();
+        String query = exchange.getRequestURI().getQuery();
+
+        if ("OPTIONS".equals(method)) {
+            exchange.sendResponseHeaders(204, -1);
+            return;
+        }
+
+        DoctorDAO dao = new DoctorDAO();
+
+        try {
+            if ("GET".equals(method)) {
+                if (path.matches("/api/doctors/\\d+")) {
+                    long id = Long.parseLong(path.substring(13));
+                    Doctor doctor = dao.findById(id);
+                    if (doctor != null) {
+                        String json = toJson(doctor);
+                        sendJson(exchange, json, 200);
+                    } else {
+                        sendError(exchange, "Doctor not found", 404);
+                    }
+                } else {
+                    List allDoctors = dao.findAll();
+                    String json = listToJson(allDoctors);
+                    sendJson(exchange, json, 200);
+                }
+            } else if ("POST".equals(method)) {
+                String body = readBody(exchange);
+                long userId = extractLong(body, "userId");
+                String fullName = extractString(body, "fullName");
+                String specialty = extractString(body, "specialty");
+                String phone = extractString(body, "phone");
+                String email = extractString(body, "email");
+                String roomNumber = extractString(body, "roomNumber");
+
+                long id = dao.create(userId, fullName, specialty, phone, email, roomNumber);
+                String json = "{\"id\": " + id + ", \"status\": \"created\"}";
+                sendJson(exchange, json, 201);
+            } else if ("PUT".equals(method)) {
+                long id = extractLong(path.substring(13), "");
+                String body = readBody(exchange);
+                String fullName = extractString(body, "fullName");
+                String specialty = extractString(body, "specialty");
+                String email = extractString(body, "email");
+                String roomNumber = extractString(body, "roomNumber");
+
+                boolean updated = dao.update(id, fullName, specialty, email, roomNumber);
+                if (updated) {
+                    sendJson(exchange, "{\"status\": \"updated\"}", 200);
+                } else {
+                    sendError(exchange, "Doctor not found", 404);
+                }
+            } else if ("DELETE".equals(method)) {
+                long id = Long.parseLong(path.substring(13));
+                boolean deleted = dao.delete(id);
+                if (deleted) {
+                    sendJson(exchange, "{\"status\": \"deleted\"}", 200);
+                } else {
+                    sendError(exchange, "Doctor not found", 404);
+                }
+            } else {
+                sendError(exchange, "Method not allowed", 405);
+            }
+        } catch (Exception e) {
+            sendError(exchange, e.getMessage(), 500);
+        }
+    }
+
+    private String toJson(Doctor d) {
+        if (d == null) return "null";
+        return "{" +
+            "\"id\": " + d.getId() + ", " +
+            "\"userId\": " + d.getUserId() + ", " +
+            "\"fullName\": \"" + escapeJson(d.getFullName()) + "\", " +
+            "\"specialty\": \"" + escapeJson(d.getSpecialty()) + "\", " +
+            "\"phone\": \"" + escapeJson(d.getPhone()) + "\", " +
+            "\"email\": \"" + escapeJson(d.getEmail()) + "\", " +
+            "\"roomNumber\": \"" + escapeJson(d.getRoomNumber()) + "\", " +
+            "\"createdAt\": \"" + escapeJson(d.getCreatedAt()) + "\"" +
+            "}";
+    }
+
+    private String listToJson(List doctors) {
+        StringBuilder sb = new StringBuilder("[");
+        for (int i = 0; i < doctors.size(); i++) {
+            if (i > 0) sb.append(",");
+            sb.append(toJson((Doctor) doctors.get(i)));
+        }
+        sb.append("]");
+        return sb.toString();
+    }
+
+    private long extractLong(String json, String key) {
+        String search = "\"" + key + "\":";
+        int idx = json.indexOf(search);
+        if (idx == -1) return 0;
+        int end = json.indexOf(",", idx);
+        if (end == -1) end = json.indexOf("}", idx);
+        String num = json.substring(idx + search.length(), end).trim();
+        try {
+            return Long.parseLong(num);
+        } catch (Exception e) {
+            return 0;
+        }
+    }
+
+    private String extractString(String json, String key) {
+        String search = "\"" + key + "\":\"";
+        int idx = json.indexOf(search);
+        if (idx == -1) return "";
+        int start = idx + search.length();
+        int end = json.indexOf("\"", start);
+        return json.substring(start, end);
+    }
+}

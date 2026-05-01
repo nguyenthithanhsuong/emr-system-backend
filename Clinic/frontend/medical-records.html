@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Medical Records</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <nav>
+        <a href="index.html">Dashboard</a>
+        <a href="doctors.html">Doctors</a>
+        <a href="patients.html">Patients</a>
+        <a href="appointments.html">Appointments</a>
+        <a href="medicines.html">Medicines</a>
+        <a href="medical-records.html">Medical Records</a>
+        <a href="prescriptions.html">Prescriptions</a>
+    </nav>
+
+    <div id="message"></div>
+
+    <h1>Medical Records Management</h1>
+
+    <div>
+        <h2>Add New Medical Record</h2>
+        <form onsubmit="handleAddRecord(event)">
+            <input type="number" id="appointmentId" placeholder="Appointment ID" required>
+            <textarea id="symptoms" placeholder="Symptoms" required></textarea>
+            <textarea id="diagnosis" placeholder="Diagnosis" required></textarea>
+            <select id="recordType" required>
+                <option value="">Select Record Type</option>
+                <option value="GENERAL">General</option>
+                <option value="EMERGENCY">Emergency</option>
+                <option value="DENTAL">Dental</option>
+            </select>
+            <textarea id="treatmentPlan" placeholder="Treatment Plan" required></textarea>
+            <button type="submit">Add Medical Record</button>
+        </form>
+    </div>
+
+    <div>
+        <h2>Medical Records List</h2>
+        <button onclick="loadRecords()">Refresh List</button>
+        <div id="recordsList"></div>
+    </div>
+
+    <div id="testLog">
+        <h2>Test Results</h2>
+        <pre id="output" style="height: 400px; overflow-y: auto;"></pre>
+    </div>
+
+    <button onclick="runCRUDTests()" style="margin-bottom: 2rem;">Run CRUD Tests</button>
+
+    <script src="common.js"></script>
+    <script>
+        let logMessages = [];
+        let allRecords = [];
+
+        function log(msg) {
+            logMessages.push(msg);
+            document.getElementById('output').textContent = logMessages.join('\n');
+        }
+
+        async function loadRecords() {
+            try {
+                allRecords = await apiGet('/patients/medical-records');
+                let html = '<div class="card-grid">';
+                if (allRecords.length === 0) {
+                    html = '<p style="grid-column: 1/-1; text-align: center; padding: 2rem;">No medical records found</p>';
+                } else {
+                    allRecords.forEach(r => {
+                        html += `
+                        <div class="card">
+                            <div class="card-header">Medical Record #${r.id}</div>
+                            <div class="card-body">
+                                <div class="card-field">
+                                    <label>Appointment ID</label>
+                                    <div class="card-field-value">#${r.appointmentId}</div>
+                                </div>
+                                <div class="card-field">
+                                    <label>Record Type</label>
+                                    <div class="card-field-value">${r.recordType}</div>
+                                </div>
+                                <div class="card-field">
+                                    <label>Symptoms</label>
+                                    <div class="card-field-value">${r.symptoms}</div>
+                                </div>
+                                <div class="card-field">
+                                    <label>Diagnosis</label>
+                                    <div class="card-field-value">${r.diagnosis}</div>
+                                </div>
+                                <div class="card-field">
+                                    <label>Treatment Plan</label>
+                                    <div class="card-field-value">${r.treatmentPlan}</div>
+                                </div>
+                            </div>
+                        </div>`;
+                    });
+                }
+                html += '</div>';
+                document.getElementById('recordsList').innerHTML = html;
+            } catch (error) {
+                showMessage('Failed to load medical records: ' + error.message, 'error');
+            }
+        }
+
+        async function handleAddRecord(event) {
+            event.preventDefault();
+            try {
+                const data = {
+                    appointmentId: parseInt(document.getElementById('appointmentId').value),
+                    symptoms: document.getElementById('symptoms').value,
+                    diagnosis: document.getElementById('diagnosis').value,
+                    recordType: document.getElementById('recordType').value,
+                    treatmentPlan: document.getElementById('treatmentPlan').value
+                };
+                const result = await apiPost('/patients/medical-records', data);
+                showMessage('Medical record added successfully!', 'success');
+                event.target.reset();
+                loadRecords();
+            } catch (error) {
+                showMessage('Failed to add medical record: ' + error.message, 'error');
+            }
+        }
+
+        async function runCRUDTests() {
+            logMessages = [];
+            log('=== Medical Records CRUD Test Suite ===');
+            log('');
+
+            try {
+                // Test 1: Create
+                log('Test 1: Creating a medical record...');
+                const newRecord = {
+                    appointmentId: 1,
+                    symptoms: 'Fever, headache, sore throat',
+                    diagnosis: 'Common cold',
+                    recordType: 'GENERAL',
+                    treatmentPlan: 'Rest, fluids, fever reducer'
+                };
+                const result = await apiPost('/patients/medical-records', newRecord);
+                const recordId = result.id;
+                log('[OK] Created medical record with ID: ' + recordId);
+                log('');
+
+                // Test 2: Read
+                log('Test 2: Reading the created medical record...');
+                const record = await apiGet('/patients/medical-records/' + recordId);
+                log('[OK] Retrieved: ' + record.diagnosis + ' (Type: ' + record.recordType + ')');
+                log('');
+
+                // Test 3: List All
+                log('Test 3: Listing all medical records...');
+                const records = await apiGet('/patients/medical-records');
+                log('[OK] Total medical records: ' + records.length);
+                log('');
+
+            } catch (error) {
+                log('[FAIL] Test failed: ' + error.message);
+            }
+
+            log('');
+            log('=== Tests Complete ===');
+            loadRecords();
+        }
+
+        window.addEventListener('load', loadRecords);
+    </script>
+</body>
+</html>

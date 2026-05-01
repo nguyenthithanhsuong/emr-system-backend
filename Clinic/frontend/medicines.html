@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Medicine Inventory</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <nav>
+        <a href="index.html">Dashboard</a>
+        <a href="doctors.html">Doctors</a>
+        <a href="patients.html">Patients</a>
+        <a href="appointments.html">Appointments</a>
+        <a href="medicines.html">Medicines</a>
+        <a href="medical-records.html">Medical Records</a>
+        <a href="prescriptions.html">Prescriptions</a>
+    </nav>
+
+    <div id="message"></div>
+
+    <h1>Medicine Inventory Management</h1>
+
+    <div>
+        <h2>Add New Medicine</h2>
+        <form onsubmit="handleAddMedicine(event)">
+            <input type="text" id="name" placeholder="Medicine Name" required>
+            <input type="text" id="unit" placeholder="Unit (e.g., tablets, ml)" required>
+            <input type="number" id="price" placeholder="Price" step="0.01" required>
+            <input type="number" id="stockQuantity" placeholder="Stock Quantity" required>
+            <input type="date" id="expiryDate" placeholder="Expiry Date" required>
+            <button type="submit">Add Medicine</button>
+        </form>
+    </div>
+
+    <div>
+        <h2>Medicine List</h2>
+        <button onclick="loadMedicines()">Refresh List</button>
+        <div id="medicinesList"></div>
+    </div>
+
+    <div id="stockPanel" style="display: none;">
+        <h2>Update Stock</h2>
+        <form onsubmit="handleUpdateStock(event)">
+            <input type="hidden" id="medicineId">
+            <label>Medicine: <span id="medicineName"></span></label>
+            <input type="number" id="newStock" placeholder="New Stock Quantity" required>
+            <button type="submit">Update Stock</button>
+            <button type="button" onclick="closeStockPanel()">Cancel</button>
+        </form>
+    </div>
+
+    <div id="testLog">
+        <h2>Test Results</h2>
+        <pre id="output" style="height: 400px; overflow-y: auto;"></pre>
+    </div>
+
+    <button onclick="runCRUDTests()" style="margin-bottom: 2rem;">Run CRUD Tests</button>
+
+    <script src="common.js"></script>
+    <script>
+        let logMessages = [];
+        let allMedicines = [];
+
+        function log(msg) {
+            logMessages.push(msg);
+            document.getElementById('output').textContent = logMessages.join('\n');
+        }
+
+        async function loadMedicines() {
+            try {
+                allMedicines = await apiGet('/medicines');
+                let html = '<div class="card-grid">';
+                allMedicines.forEach(m => {
+                    const stockStatus = m.stockQuantity > 50 ? '#27ae60' : m.stockQuantity > 10 ? '#f39c12' : '#e74c3c';
+                    html += `
+                    <div class="card">
+                        <div class="card-header">${m.name}</div>
+                        <div class="card-body">
+                            <div class="card-field">
+                                <label>Unit</label>
+                                <div class="card-field-value">${m.unit}</div>
+                            </div>
+                            <div class="card-field">
+                                <label>Price</label>
+                                <div class="card-field-value" style="color: #27ae60; font-weight: 600;">$${m.price.toFixed(2)}</div>
+                            </div>
+                            <div class="card-field">
+                                <label>Stock Quantity</label>
+                                <div class="card-field-value" style="color: ${stockStatus}; font-weight: 600;">${m.stockQuantity} units</div>
+                            </div>
+                            <div class="card-field">
+                                <label>Expiry Date</label>
+                                <div class="card-field-value">${m.expiryDate}</div>
+                            </div>
+                            <div class="card-field">
+                                <label>ID</label>
+                                <div class="card-field-value">#${m.id}</div>
+                            </div>
+                        </div>
+                        <div class="card-footer">
+                            <button onclick="editStock(${m.id}, '${m.name}')">Update Stock</button>
+                            <button onclick="deleteMedicine(${m.id})" style="background: #e74c3c;">Delete</button>
+                        </div>
+                    </div>`;
+                });
+                html += '</div>';
+                document.getElementById('medicinesList').innerHTML = html;
+            } catch (error) {
+                showMessage('Failed to load medicines: ' + error.message, 'error');
+            }
+        }
+
+        async function handleAddMedicine(event) {
+            event.preventDefault();
+            try {
+                const data = {
+                    name: document.getElementById('name').value,
+                    unit: document.getElementById('unit').value,
+                    price: parseFloat(document.getElementById('price').value),
+                    stockQuantity: parseInt(document.getElementById('stockQuantity').value),
+                    expiryDate: document.getElementById('expiryDate').value
+                };
+                const result = await apiPost('/medicines', data);
+                showMessage('Medicine added successfully!', 'success');
+                event.target.reset();
+                loadMedicines();
+            } catch (error) {
+                showMessage('Failed to add medicine: ' + error.message, 'error');
+            }
+        }
+
+        function editStock(id, name) {
+            document.getElementById('medicineId').value = id;
+            document.getElementById('medicineName').textContent = name;
+            document.getElementById('stockPanel').style.display = 'block';
+        }
+
+        function closeStockPanel() {
+            document.getElementById('stockPanel').style.display = 'none';
+        }
+
+        async function handleUpdateStock(event) {
+            event.preventDefault();
+            try {
+                const id = parseInt(document.getElementById('medicineId').value);
+                const data = {
+                    stockQuantity: parseInt(document.getElementById('newStock').value)
+                };
+                await apiPut(`/medicines/${id}`, data);
+                showMessage('Stock updated successfully!', 'success');
+                closeStockPanel();
+                loadMedicines();
+            } catch (error) {
+                showMessage('Failed to update stock: ' + error.message, 'error');
+            }
+        }
+
+        async function deleteMedicine(id) {
+            if (!confirm('Are you sure you want to delete this medicine?')) return;
+            try {
+                await apiDelete(`/medicines/${id}`);
+                showMessage('Medicine deleted successfully!', 'success');
+                loadMedicines();
+            } catch (error) {
+                showMessage('Failed to delete medicine: ' + error.message, 'error');
+            }
+        }
+
+        async function runCRUDTests() {
+            logMessages = [];
+            log('=== Medicine CRUD Test Suite ===');
+            log('');
+
+            try {
+                // Test 1: Create
+                log('Test 1: Creating a medicine...');
+                const newMed = {
+                    name: 'Test Aspirin',
+                    unit: 'tablets',
+                    price: 5.99,
+                    stockQuantity: 100,
+                    expiryDate: '2026-12-31'
+                };
+                const result = await apiPost('/medicines', newMed);
+                const medId = result.id;
+                log(`[OK] Created medicine with ID: ${medId}`);
+                log('');
+
+                // Test 2: Read
+                log('Test 2: Reading the created medicine...');
+                const med = await apiGet(`/medicines/${medId}`);
+                log(`[OK] Retrieved: ${med.name} (${med.stockQuantity} in stock)`);
+                log('');
+
+                // Test 3: Update Stock
+                log('Test 3: Updating medicine stock...');
+                await apiPut(`/medicines/${medId}`, { stockQuantity: 150 });
+                const updated = await apiGet(`/medicines/${medId}`);
+                log(`[OK] Stock updated to: ${updated.stockQuantity}`);
+                log('');
+
+                // Test 4: List All
+                log('Test 4: Listing all medicines...');
+                const medicines = await apiGet('/medicines');
+                log(`[OK] Total medicines in inventory: ${medicines.length}`);
+                medicines.slice(0, 3).forEach(m => log(`  - ${m.name}: ${m.stockQuantity} units @ $${m.price}`));
+                log('');
+
+                // Test 5: Delete
+                log('Test 5: Deleting the test medicine...');
+                await apiDelete(`/medicines/${medId}`);
+                log(`[OK] Medicine ${medId} deleted`);
+
+            } catch (error) {
+                log(`[FAIL] Test failed: ${error.message}`);
+            }
+
+            log('');
+            log('=== Tests Complete ===');
+            loadMedicines();
+        }
+
+        window.addEventListener('load', loadMedicines);
+    </script>
+</body>
+</html>

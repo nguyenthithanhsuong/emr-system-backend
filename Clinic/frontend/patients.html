@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Patient Management</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <nav>
+        <a href="index.html">Dashboard</a>
+        <a href="doctors.html">Doctors</a>
+        <a href="patients.html">Patients</a>
+        <a href="appointments.html">Appointments</a>
+        <a href="medicines.html">Medicines</a>
+        <a href="medical-records.html">Medical Records</a>
+        <a href="prescriptions.html">Prescriptions</a>
+    </nav>
+
+    <div id="message"></div>
+
+    <h1>Patient Management</h1>
+
+    <div>
+        <h2>Add New Patient</h2>
+        <form onsubmit="handleAddPatient(event)">
+            <input type="number" id="userId" placeholder="User ID (Optional)">
+            <input type="text" id="fullName" placeholder="Full Name" required>
+            <input type="date" id="dob" placeholder="Date of Birth" required>
+            <select id="gender" required>
+                <option value="">Select Gender</option>
+                <option value="MALE">Male</option>
+                <option value="FEMALE">Female</option>
+                <option value="OTHER">Other</option>
+            </select>
+            <input type="text" id="phone" placeholder="Phone" required>
+            <input type="text" id="address" placeholder="Address" required>
+            <input type="text" id="insuranceCode" placeholder="Insurance Code" required>
+            <button type="submit">Add Patient</button>
+        </form>
+    </div>
+
+    <div>
+        <h2>Patients List</h2>
+        <button onclick="loadPatients()">Refresh List</button>
+        <div id="patientsList"></div>
+    </div>
+
+    <div id="detailPanel" style="display: none;">
+        <h2>Patient Details & Medical History</h2>
+        <button onclick="closeDetail()">Close</button>
+        <div id="detailContent"></div>
+    </div>
+
+    <div id="testLog">
+        <h2>Test Results</h2>
+        <pre id="output" style="height: 400px; overflow-y: auto;"></pre>
+    </div>
+
+    <button onclick="runCRUDTests()" style="margin-bottom: 2rem;">Run CRUD Tests</button>
+
+    <script src="common.js"></script>
+    <script>
+        let logMessages = [];
+        let allPatients = [];
+
+        function log(msg) {
+            logMessages.push(msg);
+            document.getElementById('output').textContent = logMessages.join('\n');
+        }
+
+        async function loadPatients() {
+            try {
+                allPatients = await apiGet('/patients');
+                let html = '<table>';
+                html += '<thead><tr><th>Name</th><th>DOB</th><th>Gender</th><th>Contact</th><th>Insurance</th><th>Actions</th></tr></thead>';
+                html += '<tbody>';
+                allPatients.forEach(p => {
+                    html += `<tr>
+                        <td><strong>${p.fullName}</strong></td>
+                        <td>${p.dob}</td>
+                        <td>${p.gender}</td>
+                        <td>${p.phone}</td>
+                        <td>${p.insuranceCode}</td>
+                        <td>
+                            <button onclick="viewDetails(${p.id})">History</button>
+                            <button onclick="deletePatient(${p.id})" style="background: #e74c3c;">Delete</button>
+                        </td>
+                    </tr>`;
+                });
+                html += '</tbody></table>';
+                document.getElementById('patientsList').innerHTML = html;
+            } catch (error) {
+                showMessage('Failed to load patients: ' + error.message, 'error');
+            }
+        }
+
+        async function handleAddPatient(event) {
+            event.preventDefault();
+            try {
+                const data = {
+                    userId: document.getElementById('userId').value || null,
+                    fullName: document.getElementById('fullName').value,
+                    dob: document.getElementById('dob').value,
+                    gender: document.getElementById('gender').value,
+                    phone: document.getElementById('phone').value,
+                    address: document.getElementById('address').value,
+                    insuranceCode: document.getElementById('insuranceCode').value
+                };
+                const result = await apiPost('/patients', data);
+                showMessage('Patient added successfully!', 'success');
+                event.target.reset();
+                loadPatients();
+            } catch (error) {
+                showMessage('Failed to add patient: ' + error.message, 'error');
+            }
+        }
+
+        async function viewDetails(patientId) {
+            try {
+                const patient = allPatients.find(p => p.id === patientId);
+                const appointments = await apiGet(`/appointments?patientId=${patientId}`);
+                
+                let html = `
+                <div style="background: white; padding: 2rem; border-radius: 12px;">
+                    <h3 style="color: #667eea; border-bottom: 2px solid #667eea; padding-bottom: 1rem;">${patient.fullName}</h3>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin: 1.5rem 0;">
+                        <div style="background: #f8f9ff; padding: 1rem; border-radius: 8px;">
+                            <label style="color: #667eea; font-weight: 600;">Date of Birth</label>
+                            <p style="margin-top: 0.5rem;">${patient.dob}</p>
+                        </div>
+                        <div style="background: #f8f9ff; padding: 1rem; border-radius: 8px;">
+                            <label style="color: #667eea; font-weight: 600;">Gender</label>
+                            <p style="margin-top: 0.5rem;">${patient.gender}</p>
+                        </div>
+                        <div style="background: #f8f9ff; padding: 1rem; border-radius: 8px;">
+                            <label style="color: #667eea; font-weight: 600;">Phone</label>
+                            <p style="margin-top: 0.5rem;">${patient.phone}</p>
+                        </div>
+                        <div style="background: #f8f9ff; padding: 1rem; border-radius: 8px;">
+                            <label style="color: #667eea; font-weight: 600;">Address</label>
+                            <p style="margin-top: 0.5rem;">${patient.address}</p>
+                        </div>
+                        <div style="background: #f8f9ff; padding: 1rem; border-radius: 8px;">
+                            <label style="color: #667eea; font-weight: 600;">Insurance Code</label>
+                            <p style="margin-top: 0.5rem;">${patient.insuranceCode}</p>
+                        </div>
+                    </div>
+                    
+                    <h4 style="margin-top: 2rem; color: #1a1a2e; border-bottom: 2px solid #667eea; padding-bottom: 0.8rem;">Medical History (${appointments.length} Appointments)</h4>`;
+                
+                if (appointments.length === 0) {
+                    html += '<div style="padding: 2rem; text-align: center; color: #999;">No appointments found for this patient</div>';
+                } else {
+                    html += '<div style="display: grid; gap: 1rem; margin-top: 1rem;">';
+                    appointments.forEach(a => {
+                        const statusClass = `status-${a.status.toLowerCase()}`;
+                        html += `
+                        <div style="background: #f8f9ff; padding: 1.5rem; border-radius: 8px; border-left: 4px solid #667eea;">
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem;">
+                                <div>
+                                    <label style="color: #667eea; font-weight: 600;">Date</label>
+                                    <p style="margin-top: 0.3rem;">${a.appointmentStartDate}</p>
+                                </div>
+                                <div>
+                                    <label style="color: #667eea; font-weight: 600;">Reason</label>
+                                    <p style="margin-top: 0.3rem;">${a.reason}</p>
+                                </div>
+                                <div>
+                                    <label style="color: #667eea; font-weight: 600;">Doctor ID</label>
+                                    <p style="margin-top: 0.3rem;">#${a.doctorId}</p>
+                                </div>
+                                <div>
+                                    <label style="color: #667eea; font-weight: 600;">Status</label>
+                                    <p style="margin-top: 0.3rem;"><span class="${statusClass}">${a.status}</span></p>
+                                </div>
+                            </div>
+                        </div>`;
+                    });
+                    html += '</div>';
+                }
+                html += '</div>';
+                
+                document.getElementById('detailContent').innerHTML = html;
+                document.getElementById('detailPanel').style.display = 'block';
+            } catch (error) {
+                showMessage('Failed to load patient details: ' + error.message, 'error');
+            }
+        }
+
+        function closeDetail() {
+            document.getElementById('detailPanel').style.display = 'none';
+        }
+
+        async function deletePatient(id) {
+            if (!confirm('Are you sure you want to delete this patient?')) return;
+            try {
+                await apiDelete(`/patients/${id}`);
+                showMessage('Patient deleted successfully!', 'success');
+                loadPatients();
+            } catch (error) {
+                showMessage('Failed to delete patient: ' + error.message, 'error');
+            }
+        }
+
+        async function runCRUDTests() {
+            logMessages = [];
+            log('=== Patient CRUD Test Suite ===');
+            log('');
+
+            try {
+                // Test 1: Create
+                log('Test 1: Creating a patient...');
+                const newPat = {
+                    userId: null,
+                    fullName: 'John Test Patient',
+                    dob: '1990-05-15',
+                    gender: 'MALE',
+                    phone: '555-1234',
+                    address: '123 Test Street',
+                    insuranceCode: 'INS123456'
+                };
+                const result = await apiPost('/patients', newPat);
+                const patId = result.id;
+                log(`[OK] Created patient with ID: ${patId}`);
+                log('');
+
+                // Test 2: Read
+                log('Test 2: Reading the created patient...');
+                const pat = await apiGet(`/patients/${patId}`);
+                log(`[OK] Retrieved: ${pat.fullName} (DOB: ${pat.dob})`);
+                log('');
+
+                // Test 3: List All
+                log('Test 3: Listing all patients...');
+                const patients = await apiGet('/patients');
+                log(`[OK] Total patients in system: ${patients.length}`);
+                log('');
+
+                // Test 4: Get Appointments for Patient
+                log('Test 4: Checking appointments for patient...');
+                const apts = await apiGet(`/appointments?patientId=${patId}`);
+                log(`[OK] Patient has ${apts.length} appointment(s)`);
+                log('');
+
+                // Test 5: Delete
+                log('Test 5: Deleting the test patient...');
+                await apiDelete(`/patients/${patId}`);
+                log(`[OK] Patient ${patId} deleted`);
+
+            } catch (error) {
+                log(`[FAIL] Test failed: ${error.message}`);
+            }
+
+            log('');
+            log('=== Tests Complete ===');
+            loadPatients();
+        }
+
+        window.addEventListener('load', loadPatients);
+    </script>
+</body>
+</html>

@@ -2,15 +2,15 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "Compile Java to target/classes",
+      "label": "Compile Demo Java",
       "type": "shell",
       "command": "javac",
       "args": [
         "-encoding",
         "UTF-8",
         "-d",
-        "target/classes",
-        "src/main/java/com/eclinic/*.java"
+        "Demo/target/classes",
+        "Demo/src/main/java/com/eclinic/*.java"
       ],
       "options": {
         "cwd": "${workspaceFolder}"
@@ -18,12 +18,43 @@
       "group": "build"
     },
     {
-      "label": "Run App from target/classes",
+      "label": "Run Demo App",
       "type": "shell",
       "command": "java",
       "args": [
         "-cp",
-        "target/classes",
+        "Demo/target/classes",
+        "com.eclinic.App"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      }
+    },
+    {
+      "label": "Compile Clinic Java",
+      "type": "shell",
+      "command": "javac",
+      "args": [
+        "-encoding",
+        "UTF-8",
+        "-cp",
+        "Clinic/lib/postgresql-42.7.5.jar",
+        "-d",
+        "Clinic/target/classes",
+        "Clinic/src/main/java/com/eclinic/*.java"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "group": "build"
+    },
+    {
+      "label": "Run Clinic App",
+      "type": "shell",
+      "command": "java",
+      "args": [
+        "-cp",
+        "Clinic/target/classes;Clinic/lib/postgresql-42.7.5.jar",
         "com.eclinic.App"
       ],
       "options": {
