@@ -34,6 +34,7 @@ abstract class User {
         System.out.println("Saved to Users table only.");
     }
 
+    //Database
     static final class UserRecord {
         private final int id;
         private final String fullName;

@@ -24,6 +24,7 @@ public abstract class UserFactory {
         }
     }
 
+    //Hàm tiện ích để kiểm tra chuỗi rỗng hoặc null.
     protected static boolean isBlank(String value) {
         return value == null || value.trim().length() == 0;
     }

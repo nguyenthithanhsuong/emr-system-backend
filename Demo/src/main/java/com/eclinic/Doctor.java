@@ -8,6 +8,7 @@ final class Doctor extends User {
         super(database, id, fullName, specialty);
     }
 
+    //Định nghĩa role riêng cho Doctor.
     @Override
     public String getRole() {
         return "Doctor";
@@ -22,6 +23,7 @@ final class DoctorCreator extends UserFactory {
         this.database = database;
     }
 
+    //Override validateRequest để thêm business rule riêng cho Doctor.
     @Override
     protected void validateRequest(UserRegistrationRequest request) {
         super.validateRequest(request);
@@ -30,6 +32,7 @@ final class DoctorCreator extends UserFactory {
         }
     }
 
+    //Override createUser để tạo Doctor mới.
     @Override
     protected User createUser(UserRegistrationRequest request) {
         int id = database.nextUserId();
