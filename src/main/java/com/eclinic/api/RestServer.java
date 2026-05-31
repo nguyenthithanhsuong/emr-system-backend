@@ -75,6 +75,9 @@ public class RestServer {
         // Email
         server.createContext("/api/email", new EmailHandler());
 
+        // Queue
+        server.createContext("/api/queue", new QueueHandler());
+
         // Static files (HTML, CSS, JS)
         server.createContext("/", new StaticFileHandler());
 

@@ -70,6 +70,22 @@ public class Migration {
             System.out.println("  ~ notifications error: " + e.getMessage());
         }
 
+        try {
+            stmt.execute("CREATE TABLE IF NOT EXISTS patient_queue (" +
+                "id BIGSERIAL PRIMARY KEY, " +
+                "patient_id BIGINT, " +
+                "patient_name VARCHAR(200) NOT NULL, " +
+                "medical_history_number VARCHAR(50), " +
+                "appointment_id BIGINT, " +
+                "source VARCHAR(20) DEFAULT 'WALK_IN', " +
+                "status VARCHAR(20) DEFAULT 'WAITING', " +
+                "enqueued_at TIMESTAMP DEFAULT NOW()" +
+                ")");
+            System.out.println("  + Created patient_queue table");
+        } catch (Exception e) {
+            System.out.println("  ~ patient_queue error: " + e.getMessage());
+        }
+
         stmt.close();
         ConnectionManager.closeConnection(conn);
         System.out.println("Migrations complete.");
