@@ -43,7 +43,7 @@ public class MedicalRecordsHandler extends BaseHandler {
                 }
             } else if ("POST".equals(method)) {
                 String body = readBody(exchange);
-                long appointmentId = extractLong(body, "appointmentId");
+                Long appointmentId = extractNullableLong(body, "appointmentId");
                 String symptoms = extractString(body, "symptoms");
                 String diagnosis = extractString(body, "diagnosis");
                 String recordType = extractString(body, "recordType");
@@ -114,6 +114,29 @@ public class MedicalRecordsHandler extends BaseHandler {
             return Long.parseLong(num);
         } catch (Exception e) {
             return 0;
+        }
+    }
+
+    /** Extract a Long that may be null (returns null instead of 0). */
+    private Long extractNullableLong(String json, String key) {
+        String search = "\"" + key + "\":";
+        int idx = json.indexOf(search);
+        if (idx == -1) return null;
+        int start = idx + search.length();
+        int end = json.indexOf(",", start);
+        if (end == -1) end = json.indexOf("}", start);
+        String raw = json.substring(start, end).trim();
+        if (raw.equals("null") || raw.isEmpty()) return null;
+        // Strip quotes if present
+        if (raw.startsWith("\"") && raw.endsWith("\"")) {
+            raw = raw.substring(1, raw.length() - 1);
+            if (raw.isEmpty()) return null;
+        }
+        try {
+            long val = Long.parseLong(raw);
+            return val > 0 ? val : null;
+        } catch (Exception e) {
+            return null;
         }
     }
 

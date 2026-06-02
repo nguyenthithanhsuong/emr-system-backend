@@ -11,12 +11,16 @@ import java.util.List;
 
 public class MedicalRecordDAO {
 
-    public long create(long appointmentId, String symptoms, String diagnosis, String recordType, String treatmentPlan) throws SQLException {
+    public long create(Long appointmentId, String symptoms, String diagnosis, String recordType, String treatmentPlan) throws SQLException {
         String sql = "INSERT INTO medical_records (appointment_id, symptoms, diagnosis, record_type, treatment_plan) VALUES (?, ?, ?, ?, ?) RETURNING id";
         Connection conn = ConnectionManager.getConnection();
         try {
             PreparedStatement stmt = conn.prepareStatement(sql);
-            stmt.setLong(1, appointmentId);
+            if (appointmentId != null && appointmentId > 0) {
+                stmt.setLong(1, appointmentId);
+            } else {
+                stmt.setNull(1, java.sql.Types.BIGINT);
+            }
             stmt.setString(2, symptoms);
             stmt.setString(3, diagnosis);
             stmt.setString(4, recordType);
