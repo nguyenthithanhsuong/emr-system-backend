@@ -9,6 +9,9 @@ public class Medicine {
     private BigDecimal price;
     private int stockQuantity;
     private String expiryDate;
+    private Long categoryId;
+    private String categoryName;
+    private String categoryNameVi;
 
     public Medicine(long id, String name, String unit, BigDecimal price, int stockQuantity, String expiryDate) {
         this.id = id;
@@ -38,6 +41,15 @@ public class Medicine {
 
     public String getExpiryDate() { return expiryDate; }
     public void setExpiryDate(String expiryDate) { this.expiryDate = expiryDate; }
+
+    public Long getCategoryId() { return categoryId; }
+    public void setCategoryId(Long categoryId) { this.categoryId = categoryId; }
+
+    public String getCategoryName() { return categoryName; }
+    public void setCategoryName(String categoryName) { this.categoryName = categoryName; }
+
+    public String getCategoryNameVi() { return categoryNameVi; }
+    public void setCategoryNameVi(String categoryNameVi) { this.categoryNameVi = categoryNameVi; }
 
     public String toString() {
         return "Medicine{" +

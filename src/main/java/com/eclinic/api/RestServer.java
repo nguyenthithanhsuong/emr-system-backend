@@ -55,6 +55,7 @@ public class RestServer {
 
         // Medicines
         server.createContext("/api/medicines", new MedicinesHandler());
+        server.createContext("/api/medicine-categories", new MedicineCategoriesHandler());
 
         // Prescriptions
         server.createContext("/api/prescriptions", new PrescriptionHandler());
