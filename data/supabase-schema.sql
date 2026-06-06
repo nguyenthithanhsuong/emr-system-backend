@@ -66,7 +66,7 @@ CREATE TABLE IF NOT EXISTS appointments (
 
 CREATE TABLE IF NOT EXISTS medical_records (
     id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    appointment_id BIGINT UNIQUE NOT NULL,
+    appointment_id BIGINT UNIQUE,
     symptoms TEXT NOT NULL,
     diagnosis TEXT NOT NULL,
     record_type VARCHAR(50) NOT NULL
@@ -208,7 +208,7 @@ CREATE TABLE IF NOT EXISTS patient_queue (
     medical_history_number VARCHAR(50),
     appointment_id BIGINT,
     source VARCHAR(20) NOT NULL DEFAULT 'WALK_IN'
-        CHECK (source IN ('WALK_IN', 'APPOINTMENT')),
+        CHECK (source IN ('WALK_IN', 'APPOINTMENT', 'REGISTERED')),
     status VARCHAR(20) NOT NULL DEFAULT 'WAITING'
         CHECK (status IN ('WAITING', 'IN_PROGRESS', 'DONE', 'CANCELLED')),
     enqueued_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
