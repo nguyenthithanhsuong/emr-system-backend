@@ -15,6 +15,11 @@ public class MedicinesHandler extends BaseHandler {
         String path = normalizePath(exchange.getRequestURI().getPath());
         String query = exchange.getRequestURI().getQuery();
 
+        // RBAC: write operations require ADMIN; GET available to all authenticated
+        if (!"GET".equals(method)) {
+            if (!requireRole(exchange, "ADMIN")) return;
+        }
+
         MedicineDAO dao = new MedicineDAO();
 
         try {

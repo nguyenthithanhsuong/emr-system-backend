@@ -56,6 +56,25 @@ public abstract class BaseHandler implements HttpHandler {
         return null;
     }
 
+    /**
+     * Check if the authenticated user has one of the allowed roles.
+     * Sends 403 if role is not permitted. Returns true if access is allowed.
+     */
+    protected boolean requireRole(HttpExchange exchange, String... allowedRoles) throws IOException {
+        String role = getAuthRole(exchange);
+        if (role == null) {
+            sendError(exchange, "Forbidden — insufficient permissions", 403);
+            return false;
+        }
+        for (String allowed : allowedRoles) {
+            if (allowed.equalsIgnoreCase(role)) {
+                return true;
+            }
+        }
+        sendError(exchange, "Forbidden — role '" + role + "' not allowed for this endpoint", 403);
+        return false;
+    }
+
     protected abstract void handleRequest(HttpExchange exchange) throws IOException;
 
     protected void sendJson(HttpExchange exchange, String json, int statusCode) throws IOException {

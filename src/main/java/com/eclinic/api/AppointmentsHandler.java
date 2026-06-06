@@ -14,6 +14,10 @@ public class AppointmentsHandler extends BaseHandler {
         String path = normalizePath(exchange.getRequestURI().getPath());
         String query = exchange.getRequestURI().getQuery();
 
+        // RBAC: write operations require RECEPTIONIST or ADMIN
+        if (!"GET".equals(method)) {
+            if (!requireRole(exchange, "RECEPTIONIST", "ADMIN")) return;
+        }
 
         AppointmentDAO dao = new AppointmentDAO();
 

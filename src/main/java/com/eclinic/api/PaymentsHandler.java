@@ -21,6 +21,10 @@ public class PaymentsHandler extends BaseHandler {
         String method = exchange.getRequestMethod();
         String path = exchange.getRequestURI().getPath();
 
+        // RBAC: payments — ADMIN for confirm, any authenticated role can view
+        if ("POST".equals(method)) {
+            if (!requireRole(exchange, "ADMIN", "RECEPTIONIST")) return;
+        }
 
         try {
             if ("GET".equals(method) && "/api/payments".equals(path)) {

@@ -9,34 +9,23 @@ import java.util.List;
 
 public class UsersHandler extends BaseHandler {
 
-    /** POST (create user) is allowed without auth for registration/setup.
-     *  All other operations (GET, PUT, DELETE) require authentication. */
+    /** All user management operations require authentication.
+     *  Role checking is done per-method in handleRequest(). */
     @Override
     protected boolean requiresAuth() {
-        // This is evaluated in handle() before handleRequest(),
-        // but we need the exchange to check the method.
-        // Since requiresAuth() is called without exchange context,
-        // we return false here and enforce auth manually in handleRequest for non-POST.
-        return false;
+        return true;
     }
 
     protected void handleRequest(HttpExchange exchange) throws IOException {
         String method = exchange.getRequestMethod();
         String path = normalizePath(exchange.getRequestURI().getPath());
 
+        // All user management requires ADMIN role
+        if (!requireRole(exchange, "ADMIN")) return;
 
         UserDAO dao = new UserDAO();
 
         try {
-            // Enforce auth for all methods except POST (user creation/registration)
-            if (!"POST".equals(method)) {
-                Long authUserId = getAuthUserId(exchange);
-                if (authUserId == null) {
-                    sendError(exchange, "Unauthorized — token không hợp lệ hoặc đã hết hạn", 401);
-                    return;
-                }
-            }
-
             if ("GET".equals(method)) {
                 if (path.startsWith("/api/users/")) {
                     long id = parseId(path, "/api/users/");

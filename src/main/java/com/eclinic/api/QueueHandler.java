@@ -13,6 +13,11 @@ public class QueueHandler extends BaseHandler {
         String method = exchange.getRequestMethod();
         String path = normalizePath(exchange.getRequestURI().getPath());
 
+        // RBAC: write operations require RECEPTIONIST or ADMIN
+        if (!"GET".equals(method)) {
+            if (!requireRole(exchange, "RECEPTIONIST", "ADMIN", "DOCTOR")) return;
+        }
+
         try {
             if ("GET".equals(method)) {
                 handleGetQueue(exchange);

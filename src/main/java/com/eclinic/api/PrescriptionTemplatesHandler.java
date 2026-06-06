@@ -16,6 +16,9 @@ public class PrescriptionTemplatesHandler extends BaseHandler {
         String path = normalizePath(exchange.getRequestURI().getPath());
         String query = exchange.getRequestURI().getQuery();
 
+        // RBAC: only DOCTOR and ADMIN can manage prescription templates
+        if (!requireRole(exchange, "DOCTOR", "ADMIN")) return;
+
         try {
             if ("GET".equals(method)) {
                 if (query != null && query.contains("doctorId=")) {

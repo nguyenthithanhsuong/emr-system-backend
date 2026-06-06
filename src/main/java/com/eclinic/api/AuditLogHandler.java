@@ -11,6 +11,8 @@ public class AuditLogHandler extends BaseHandler {
     protected void handleRequest(HttpExchange exchange) throws IOException {
         String method = exchange.getRequestMethod();
 
+        // RBAC: only ADMIN can view audit logs
+        if (!requireRole(exchange, "ADMIN")) return;
 
         if (!"GET".equals(method)) {
             sendError(exchange, "Method not allowed", 405);

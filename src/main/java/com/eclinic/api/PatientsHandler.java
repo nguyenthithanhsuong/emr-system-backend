@@ -15,6 +15,10 @@ public class PatientsHandler extends BaseHandler {
         String method = exchange.getRequestMethod();
         String path = exchange.getRequestURI().getPath();
 
+        // RBAC: delete requires ADMIN; GET/POST/PUT available to all authenticated
+        if ("DELETE".equals(method)) {
+            if (!requireRole(exchange, "ADMIN")) return;
+        }
 
         PatientDAO dao = new PatientDAO();
 

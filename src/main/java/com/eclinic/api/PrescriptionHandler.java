@@ -16,6 +16,8 @@ public class PrescriptionHandler extends BaseHandler {
         String path = normalizePath(exchange.getRequestURI().getPath());
         String query = exchange.getRequestURI().getQuery();
 
+        // RBAC: only DOCTOR and ADMIN can manage prescriptions
+        if (!requireRole(exchange, "DOCTOR", "ADMIN")) return;
 
         PrescriptionDAO dao = new PrescriptionDAO();
         PrescriptionDetailDAO detailDao = new PrescriptionDetailDAO();
