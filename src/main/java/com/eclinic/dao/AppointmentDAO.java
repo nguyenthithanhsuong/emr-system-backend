@@ -7,6 +7,10 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
+import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -19,8 +23,8 @@ public class AppointmentDAO {
             PreparedStatement stmt = conn.prepareStatement(sql);
             stmt.setLong(1, doctorId);
             stmt.setLong(2, patientId);
-            stmt.setTimestamp(3, Timestamp.valueOf(startDate));
-            stmt.setTimestamp(4, Timestamp.valueOf(endDate));
+            stmt.setTimestamp(3, parseTimestamp(startDate));
+            stmt.setTimestamp(4, parseTimestamp(endDate));
             stmt.setString(5, reason);
             stmt.setString(6, status);
             ResultSet rs = stmt.executeQuery();
@@ -133,6 +137,45 @@ public class AppointmentDAO {
             return rows > 0;
         } finally {
             ConnectionManager.closeConnection(conn);
+        }
+    }
+
+    public boolean reschedule(long id, String startDate, String endDate, String status) throws SQLException {
+        String sql = "UPDATE appointments SET appointment_start_date = ?, appointment_end_date = ?, status = ? WHERE id = ?";
+        Connection conn = ConnectionManager.getConnection();
+        try {
+            PreparedStatement stmt = conn.prepareStatement(sql);
+            stmt.setTimestamp(1, parseTimestamp(startDate));
+            stmt.setTimestamp(2, parseTimestamp(endDate));
+            stmt.setString(3, status);
+            stmt.setLong(4, id);
+            int rows = stmt.executeUpdate();
+            return rows > 0;
+        } finally {
+            ConnectionManager.closeConnection(conn);
+        }
+    }
+
+    /**
+     * Parse a date string that may be ISO-8601 (from frontend) or 'yyyy-MM-dd HH:mm:ss' (legacy).
+     */
+    private Timestamp parseTimestamp(String dateStr) {
+        if (dateStr == null || dateStr.isEmpty()) {
+            throw new IllegalArgumentException("Date string cannot be null or empty");
+        }
+        try {
+            // Try ISO-8601 with offset (e.g. 2024-01-15T10:00:00.000Z or +07:00)
+            OffsetDateTime odt = OffsetDateTime.parse(dateStr);
+            return Timestamp.from(odt.toInstant());
+        } catch (DateTimeParseException e1) {
+            try {
+                // Try ISO-8601 without offset (e.g. 2024-01-15T10:00:00)
+                LocalDateTime ldt = LocalDateTime.parse(dateStr, DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+                return Timestamp.valueOf(ldt);
+            } catch (DateTimeParseException e2) {
+                // Fallback to legacy format: yyyy-MM-dd HH:mm:ss
+                return Timestamp.valueOf(dateStr);
+            }
         }
     }
 }

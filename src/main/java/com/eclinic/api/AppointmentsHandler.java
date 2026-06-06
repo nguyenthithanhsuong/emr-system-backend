@@ -55,8 +55,21 @@ public class AppointmentsHandler extends BaseHandler {
                 long id = parseId(path, "/api/appointments/");
                 String body = readBody(exchange);
                 String status = extractString(body, "status");
+                String startDate = extractString(body, "appointmentStartDate");
+                String endDate = extractString(body, "appointmentEndDate");
 
-                boolean updated = dao.updateStatus(id, status);
+                boolean updated;
+                if (startDate.length() > 0) {
+                    // Reschedule: update dates and optionally status
+                    String effectiveEnd = endDate.length() > 0 ? endDate : startDate;
+                    String effectiveStatus = status.length() > 0 ? status : "PENDING";
+                    updated = dao.reschedule(id, startDate, effectiveEnd, effectiveStatus);
+                } else if (status.length() > 0) {
+                    updated = dao.updateStatus(id, status);
+                } else {
+                    sendError(exchange, "Nothing to update", 400);
+                    return;
+                }
                 if (updated) {
                     sendJson(exchange, "{\"status\": \"updated\"}", 200);
                 } else {
