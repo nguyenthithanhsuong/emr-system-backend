@@ -16,8 +16,10 @@ public class PatientsHandler extends BaseHandler {
         String method = exchange.getRequestMethod();
         String path = exchange.getRequestURI().getPath();
 
-        // RBAC: delete requires ADMIN; GET/POST/PUT available to all authenticated
-        if ("DELETE".equals(method)) {
+        // RBAC: reception owns patient intake; admin may maintain records.
+        if ("POST".equals(method) || "PUT".equals(method)) {
+            if (!requireRole(exchange, "RECEPTIONIST", "ADMIN")) return;
+        } else if ("DELETE".equals(method)) {
             if (!requireRole(exchange, "ADMIN")) return;
         }
 
@@ -193,9 +195,15 @@ public class PatientsHandler extends BaseHandler {
             return requestedUserId;
         }
 
-        String resolvedUsername = isBlank(username) ? generateUsername("patient", fullName, phone) : username;
-        // Hash password with bcrypt instead of storing plaintext/TEMP_HASH
-        String resolvedPassword = isBlank(password) ? PasswordUtil.hash(generateRandomPassword()) : PasswordUtil.hash(password);
+        if (isBlank(username) && isBlank(password)) {
+            return null;
+        }
+        if (isBlank(username) || isBlank(password)) {
+            throw new IllegalArgumentException("username and password are required to create a patient account");
+        }
+
+        String resolvedUsername = username;
+        String resolvedPassword = PasswordUtil.hash(password);
         long createdUserId = userDAO.create(resolvedUsername, resolvedPassword, "PATIENT", "ACTIVE");
         return Long.valueOf(createdUserId);
     }

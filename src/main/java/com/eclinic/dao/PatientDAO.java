@@ -72,7 +72,7 @@ public class PatientDAO {
     }
 
     public List findAll() throws SQLException {
-        String sql = "SELECT p.id, p.user_id, u.username, p.full_name, p.dob, p.gender, p.phone, p.address, p.insurance_code, p.created_at FROM patients p LEFT JOIN users u ON p.user_id = u.id";
+        String sql = "SELECT p.id, p.user_id, u.username, p.full_name, p.dob, p.gender, p.phone, p.address, p.insurance_code, p.created_at FROM patients p LEFT JOIN users u ON p.user_id = u.id ORDER BY p.created_at DESC, p.id DESC";
         Connection conn = ConnectionManager.getConnection();
         List patients = new ArrayList();
         try {

@@ -1,6 +1,7 @@
 package com.eclinic.database;
 
 import java.sql.Connection;
+import java.sql.ResultSet;
 import java.sql.Statement;
 import java.sql.SQLException;
 import java.util.Map;
@@ -61,7 +62,7 @@ public class SeedData {
 
         try {
             // Verify
-            var rs = stmt.executeQuery("SELECT COUNT(*) as count FROM users");
+            ResultSet rs = stmt.executeQuery("SELECT COUNT(*) as count FROM users");
             if (rs.next()) {
                 System.out.println("  ✓ Total users in database: " + rs.getInt("count"));
             }

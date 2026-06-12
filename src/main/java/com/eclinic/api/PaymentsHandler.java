@@ -22,7 +22,7 @@ public class PaymentsHandler extends BaseHandler {
         String path = exchange.getRequestURI().getPath();
 
         // RBAC: payments — ADMIN for confirm, any authenticated role can view
-        if ("POST".equals(method)) {
+        if ("GET".equals(method) || "POST".equals(method)) {
             if (!requireRole(exchange, "ADMIN", "RECEPTIONIST")) return;
         }
 
@@ -147,7 +147,7 @@ public class PaymentsHandler extends BaseHandler {
 
             try {
                 AuditLogDAO auditDAO = new AuditLogDAO();
-                auditDAO.log("CONFIRM_PAYMENT", "admin", "Hóa đơn thuốc #" + id);
+                auditDAO.log("CONFIRM_PAYMENT", getAuthRole(exchange) + ":" + getAuthUserId(exchange), "prescription #" + id);
             } catch (Exception ignored) {}
             sendJson(exchange, "{\"status\": \"confirmed\"}", 200);
         } finally {

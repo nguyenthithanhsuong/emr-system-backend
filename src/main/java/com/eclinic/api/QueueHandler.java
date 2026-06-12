@@ -14,25 +14,32 @@ public class QueueHandler extends BaseHandler {
         String method = exchange.getRequestMethod();
         String path = normalizePath(exchange.getRequestURI().getPath());
 
-        // RBAC: write operations require RECEPTIONIST or ADMIN
-        if (!"GET".equals(method)) {
-            if (!requireRole(exchange, "RECEPTIONIST", "ADMIN", "DOCTOR")) return;
-        }
-
         try {
             if ("GET".equals(method)) {
                 handleGetQueue(exchange);
             } else if ("POST".equals(method)) {
                 if (path.endsWith("/remove")) {
+                    if (!requireRole(exchange, "RECEPTIONIST", "ADMIN", "DOCTOR")) return;
                     long id = extractIdBeforeSegment(path, "/remove");
                     handleRemove(exchange, id);
+                } else if (path.endsWith("/call")) {
+                    if (!requireRole(exchange, "RECEPTIONIST", "ADMIN")) return;
+                    long id = extractIdBeforeSegment(path, "/call");
+                    handleStatusUpdate(exchange, id, "CALLED", "CALL_QUEUE");
+                } else if (path.endsWith("/start")) {
+                    if (!requireRole(exchange, "DOCTOR", "ADMIN")) return;
+                    long id = extractIdBeforeSegment(path, "/start");
+                    handleStatusUpdate(exchange, id, "IN_PROGRESS", "START_EXAM");
                 } else if (path.matches(".*/\\d+/patient")) {
+                    if (!requireRole(exchange, "RECEPTIONIST", "ADMIN")) return;
                     long id = extractIdBeforeSegment(path, "/patient");
                     handleUpdatePatientId(exchange, id);
                 } else {
+                    if (!requireRole(exchange, "RECEPTIONIST", "ADMIN")) return;
                     handleEnqueue(exchange);
                 }
             } else if ("DELETE".equals(method)) {
+                if (!requireRole(exchange, "RECEPTIONIST", "ADMIN", "DOCTOR")) return;
                 long id = parseId(path, "/api/queue/");
                 handleRemove(exchange, id);
             } else {
@@ -44,6 +51,18 @@ public class QueueHandler extends BaseHandler {
     }
 
     private void handleGetQueue(HttpExchange exchange) throws Exception {
+        String query = exchange.getRequestURI().getQuery();
+        Long requestedDoctorId = parseOptionalQueryLong(query, "doctorId");
+        Long authDoctorId = null;
+        if ("DOCTOR".equalsIgnoreCase(getAuthRole(exchange))) {
+            authDoctorId = getDoctorIdForUser(getAuthUserId(exchange));
+            if (authDoctorId == null) {
+                sendJson(exchange, "[]", 200);
+                return;
+            }
+        }
+        Long doctorFilter = authDoctorId != null ? authDoctorId : requestedDoctorId;
+
         String sql = "SELECT pq.id, pq.patient_id, COALESCE(p.full_name, pq.patient_name) AS patient_name, " +
             "pq.medical_history_number, pq.appointment_id, pq.source, pq.status, pq.enqueued_at, " +
             "a.appointment_start_date, a.doctor_id, d.full_name AS doctor_name, a.reason, " +
@@ -52,10 +71,17 @@ public class QueueHandler extends BaseHandler {
             "LEFT JOIN patients p ON pq.patient_id = p.id " +
             "LEFT JOIN appointments a ON pq.appointment_id = a.id " +
             "LEFT JOIN doctors d ON a.doctor_id = d.id " +
-            "WHERE pq.status = 'WAITING' ORDER BY pq.enqueued_at ASC";
+            "WHERE pq.status IN ('WAITING', 'CALLED', 'IN_PROGRESS') ";
+        if (doctorFilter != null) {
+            sql += "AND a.doctor_id = ? ";
+        }
+        sql += "ORDER BY pq.enqueued_at ASC";
         Connection conn = ConnectionManager.getConnection();
         try {
             PreparedStatement stmt = conn.prepareStatement(sql);
+            if (doctorFilter != null) {
+                stmt.setLong(1, doctorFilter.longValue());
+            }
             ResultSet rs = stmt.executeQuery();
             StringBuilder sb = new StringBuilder("[");
             boolean first = true;
@@ -175,6 +201,32 @@ public class QueueHandler extends BaseHandler {
         }
     }
 
+    private void handleStatusUpdate(HttpExchange exchange, long queueId, String status, String auditAction) throws Exception {
+        String expectedStatus = "IN_PROGRESS".equals(status) ? "CALLED" : null;
+        String sql = "UPDATE patient_queue SET status = ? WHERE id = ? AND status <> 'DONE'";
+        if (expectedStatus != null) {
+            sql += " AND status = ?";
+        }
+        Connection conn = ConnectionManager.getConnection();
+        try {
+            PreparedStatement stmt = conn.prepareStatement(sql);
+            stmt.setString(1, status);
+            stmt.setLong(2, queueId);
+            if (expectedStatus != null) {
+                stmt.setString(3, expectedStatus);
+            }
+            int rows = stmt.executeUpdate();
+            if (rows > 0) {
+                logAudit(exchange, auditAction, "queue #" + queueId);
+                sendJson(exchange, getQueueItemJson(queueId), 200);
+            } else {
+                sendError(exchange, expectedStatus != null ? "Queue item is not ready to start" : "Queue item not found", 404);
+            }
+        } finally {
+            ConnectionManager.closeConnection(conn);
+        }
+    }
+
     private void handleRemove(HttpExchange exchange, long id) throws Exception {
         Long appointmentId = getQueueAppointmentId(id);
         if (appointmentId != null) {
@@ -251,6 +303,21 @@ public class QueueHandler extends BaseHandler {
         }
     }
 
+    private Long getDoctorIdForUser(Long userId) throws Exception {
+        if (userId == null) return null;
+        String sql = "SELECT id FROM doctors WHERE user_id = ?";
+        Connection conn = ConnectionManager.getConnection();
+        try {
+            PreparedStatement stmt = conn.prepareStatement(sql);
+            stmt.setLong(1, userId.longValue());
+            ResultSet rs = stmt.executeQuery();
+            if (!rs.next()) return null;
+            return Long.valueOf(rs.getLong("id"));
+        } finally {
+            ConnectionManager.closeConnection(conn);
+        }
+    }
+
     private String getQueueItemJson(long queueId) throws Exception {
         String sql = "SELECT pq.id, pq.patient_id, COALESCE(p.full_name, pq.patient_name) AS patient_name, " +
             "pq.medical_history_number, pq.appointment_id, pq.source, pq.status, pq.enqueued_at, " +
@@ -321,6 +388,23 @@ public class QueueHandler extends BaseHandler {
 
     private long parseId(String path, String prefix) {
         return Long.parseLong(path.substring(prefix.length()));
+    }
+
+    private Long parseOptionalQueryLong(String query, String key) {
+        if (query == null || query.length() == 0) return null;
+        String[] parts = query.split("&");
+        for (int i = 0; i < parts.length; i++) {
+            String[] kv = parts[i].split("=", 2);
+            if (kv.length == 2 && key.equals(kv[0])) {
+                try {
+                    long value = Long.parseLong(kv[1]);
+                    return value > 0 ? Long.valueOf(value) : null;
+                } catch (Exception ignored) {
+                    return null;
+                }
+            }
+        }
+        return null;
     }
 
     private long extractIdBeforeSegment(String path, String segment) {
