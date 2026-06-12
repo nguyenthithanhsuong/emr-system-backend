@@ -24,6 +24,20 @@ CREATE TABLE IF NOT EXISTS doctors (
         ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS receptionists (
+    id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    user_id BIGINT UNIQUE NOT NULL,
+    full_name VARCHAR(100) NOT NULL,
+    phone VARCHAR(15) UNIQUE NOT NULL,
+    email VARCHAR(100) UNIQUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_receptionist_user
+        FOREIGN KEY (user_id)
+        REFERENCES users(id)
+        ON DELETE CASCADE
+);
+
 CREATE TABLE IF NOT EXISTS patients (
     id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     user_id BIGINT UNIQUE,
@@ -141,6 +155,7 @@ CREATE INDEX IF NOT EXISTS idx_appointments_doctor_id ON appointments(doctor_id)
 CREATE INDEX IF NOT EXISTS idx_appointments_patient_id ON appointments(patient_id);
 CREATE INDEX IF NOT EXISTS idx_prescriptions_medical_record_id ON prescriptions(medical_record_id);
 CREATE INDEX IF NOT EXISTS idx_prescription_details_prescription_id ON prescription_details(prescription_id);
+CREATE INDEX IF NOT EXISTS idx_receptionists_user_id ON receptionists(user_id);
 
 -- ============================================================
 -- Audit log — tracks system events (login, CRUD actions, etc.)

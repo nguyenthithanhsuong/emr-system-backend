@@ -17,6 +17,16 @@ CREATE TABLE doctors (
     id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     user_id BIGINT UNIQUE NOT NULL,
     full_name VARCHAR(100) NOT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE'
+        CHECK (status IN ('ACTIVE', 'INACTIVE', 'BLOCKED')),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 🩺 2. Doctors Table
+CREATE TABLE doctors (
+    id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    user_id BIGINT UNIQUE NOT NULL,
+    full_name VARCHAR(100) NOT NULL,
     specialty VARCHAR(100) NOT NULL,
     phone VARCHAR(15) UNIQUE NOT NULL,
     email VARCHAR(100) UNIQUE,
@@ -24,6 +34,21 @@ CREATE TABLE doctors (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT fk_doctor_user
+        FOREIGN KEY (user_id)
+        REFERENCES users(id)
+        ON DELETE CASCADE
+);
+
+-- 🏢 2b. Receptionists Table
+CREATE TABLE receptionists (
+    id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    user_id BIGINT UNIQUE NOT NULL,
+    full_name VARCHAR(100) NOT NULL,
+    phone VARCHAR(15) UNIQUE NOT NULL,
+    email VARCHAR(100) UNIQUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_receptionist_user
         FOREIGN KEY (user_id)
         REFERENCES users(id)
         ON DELETE CASCADE
@@ -137,5 +162,6 @@ CREATE INDEX idx_appointments_patient_id ON appointments(patient_id);
 CREATE INDEX idx_prescriptions_medical_record_id ON prescriptions(medical_record_id);
 CREATE INDEX idx_prescription_details_prescription_id ON prescription_details(prescription_id);
 CREATE INDEX idx_doctors_user_id ON doctors(user_id);
+CREATE INDEX idx_receptionists_user_id ON receptionists(user_id);
 CREATE INDEX idx_patients_user_id ON patients(user_id);
 CREATE INDEX idx_medical_records_appointment_id ON medical_records(appointment_id);

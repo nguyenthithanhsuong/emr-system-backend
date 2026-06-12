@@ -46,6 +46,9 @@ public class RestServer {
         // Doctors
         server.createContext("/api/doctors", new DoctorsHandler());
 
+        // Receptionists
+        server.createContext("/api/receptionists", new ReceptionistsHandler());
+
         // Patients
         server.createContext("/api/patients", new PatientsHandler());
         server.createContext("/api/patients/medical-records", new MedicalRecordsHandler());
