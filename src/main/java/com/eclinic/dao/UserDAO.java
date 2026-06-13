@@ -114,6 +114,20 @@ public class UserDAO {
         }
     }
 
+    public boolean updateStatus(long id, String status) throws SQLException {
+        String sql = "UPDATE users SET status = ? WHERE id = ?";
+        Connection conn = ConnectionManager.getConnection();
+        try {
+            PreparedStatement stmt = conn.prepareStatement(sql);
+            stmt.setString(1, status);
+            stmt.setLong(2, id);
+            int rows = stmt.executeUpdate();
+            return rows > 0;
+        } finally {
+            ConnectionManager.closeConnection(conn);
+        }
+    }
+
     public boolean updateUsername(long id, String username) throws SQLException {
         String sql = "UPDATE users SET username = ? WHERE id = ?";
         Connection conn = ConnectionManager.getConnection();

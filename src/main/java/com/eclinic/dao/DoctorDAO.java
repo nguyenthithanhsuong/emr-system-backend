@@ -33,7 +33,7 @@ public class DoctorDAO {
     }
 
     public Doctor findById(long id) throws SQLException {
-        String sql = "SELECT d.id, d.user_id, u.username, d.full_name, d.specialty, d.phone, d.email, d.room_number, d.created_at FROM doctors d LEFT JOIN users u ON d.user_id = u.id WHERE d.id = ?";
+        String sql = "SELECT d.id, d.user_id, u.username, u.status, d.full_name, d.specialty, d.phone, d.email, d.room_number, d.created_at FROM doctors d LEFT JOIN users u ON d.user_id = u.id WHERE d.id = ?";
         Connection conn = ConnectionManager.getConnection();
         try {
             PreparedStatement stmt = conn.prepareStatement(sql);
@@ -50,7 +50,8 @@ public class DoctorDAO {
                     rs.getString("email"),
                     null,  // password is not stored in doctors table
                     rs.getString("room_number"),
-                    rs.getString("created_at")
+                    rs.getString("created_at"),
+                    rs.getString("status")
                 );
             }
             return null;
@@ -60,7 +61,7 @@ public class DoctorDAO {
     }
 
     public List findAll() throws SQLException {
-        String sql = "SELECT d.id, d.user_id, u.username, d.full_name, d.specialty, d.phone, d.email, d.room_number, d.created_at FROM doctors d LEFT JOIN users u ON d.user_id = u.id";
+        String sql = "SELECT d.id, d.user_id, u.username, u.status, d.full_name, d.specialty, d.phone, d.email, d.room_number, d.created_at FROM doctors d LEFT JOIN users u ON d.user_id = u.id";
         Connection conn = ConnectionManager.getConnection();
         List doctors = new ArrayList();
         try {
@@ -77,7 +78,8 @@ public class DoctorDAO {
                     rs.getString("email"),
                     null,  // password is not stored in doctors table
                     rs.getString("room_number"),
-                    rs.getString("created_at")
+                    rs.getString("created_at"),
+                    rs.getString("status")
                 ));
             }
             return doctors;

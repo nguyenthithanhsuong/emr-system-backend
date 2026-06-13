@@ -10,6 +10,7 @@ public class Receptionist {
     private String email;
     private String password;
     private String createdAt;
+    private String status;
 
     public Receptionist(long id, long userId, String username, String fullName, String department, String phone, String email, String password, String createdAt) {
         this.id = id;
@@ -21,6 +22,20 @@ public class Receptionist {
         this.email = email;
         this.password = password;
         this.createdAt = createdAt;
+        this.status = "ACTIVE";
+    }
+
+    public Receptionist(long id, long userId, String username, String fullName, String department, String phone, String email, String password, String createdAt, String status) {
+        this.id = id;
+        this.userId = userId;
+        this.username = username;
+        this.fullName = fullName;
+        this.department = department;
+        this.phone = phone;
+        this.email = email;
+        this.password = password;
+        this.createdAt = createdAt;
+        this.status = status;
     }
 
     public Receptionist() {}
@@ -51,6 +66,9 @@ public class Receptionist {
 
     public String getCreatedAt() { return createdAt; }
     public void setCreatedAt(String createdAt) { this.createdAt = createdAt; }
+
+    public String getStatus() { return status; }
+    public void setStatus(String status) { this.status = status; }
 
     public String toString() {
         return "Receptionist{" +

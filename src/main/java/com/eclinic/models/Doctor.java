@@ -11,6 +11,7 @@ public class Doctor {
     private String password;
     private String roomNumber;
     private String createdAt;
+    private String status;
 
     public Doctor(long id, long userId, String username, String fullName, String specialty, String phone, String email, String password, String roomNumber, String createdAt) {
         this.id = id;
@@ -23,6 +24,21 @@ public class Doctor {
         this.password = password;
         this.roomNumber = roomNumber;
         this.createdAt = createdAt;
+        this.status = "ACTIVE"; // default
+    }
+
+    public Doctor(long id, long userId, String username, String fullName, String specialty, String phone, String email, String password, String roomNumber, String createdAt, String status) {
+        this.id = id;
+        this.userId = userId;
+        this.username = username;
+        this.fullName = fullName;
+        this.specialty = specialty;
+        this.phone = phone;
+        this.email = email;
+        this.password = password;
+        this.roomNumber = roomNumber;
+        this.createdAt = createdAt;
+        this.status = status;
     }
 
     public Doctor() {}
@@ -56,6 +72,9 @@ public class Doctor {
 
     public String getCreatedAt() { return createdAt; }
     public void setCreatedAt(String createdAt) { this.createdAt = createdAt; }
+
+    public String getStatus() { return status; }
+    public void setStatus(String status) { this.status = status; }
 
     public String toString() {
         return "Doctor{" +

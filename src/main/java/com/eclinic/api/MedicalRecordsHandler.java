@@ -34,6 +34,11 @@ public class MedicalRecordsHandler extends BaseHandler {
                     } else {
                         sendJson(exchange, "null", 200);
                     }
+                } else if (query != null && query.contains("patientId=")) {
+                    long patientId = parseQueryLong(query, "patientId");
+                    List records = dao.findByPatientId(patientId);
+                    String json = listToJson(records);
+                    sendJson(exchange, json, 200);
                 } else if (path.startsWith("/api/patients/medical-records/")) {
                     long id = parseId(path, "/api/patients/medical-records/");
                     MedicalRecord record = dao.findById(id);
@@ -112,6 +117,7 @@ public class MedicalRecordsHandler extends BaseHandler {
             "\"diagnosis\": \"" + escapeJson(m.getDiagnosis()) + "\", " +
             "\"recordType\": \"" + escapeJson(m.getRecordType()) + "\", " +
             "\"treatmentPlan\": \"" + escapeJson(m.getTreatmentPlan()) + "\", " +
+            "\"patientName\": \"" + escapeJson(m.getPatientName() != null ? m.getPatientName() : "Unknown") + "\", " +
             "\"createdAt\": \"" + escapeJson(m.getCreatedAt()) + "\"" +
             "}";
     }

@@ -36,14 +36,20 @@ public class MedicalRecordDAO {
     }
 
     public MedicalRecord findById(long id) throws SQLException {
-        String sql = "SELECT id, appointment_id, symptoms, diagnosis, record_type, treatment_plan, created_at FROM medical_records WHERE id = ?";
+        String sql = "SELECT mr.id, mr.appointment_id, mr.symptoms, mr.diagnosis, mr.record_type, mr.treatment_plan, mr.created_at, COALESCE(MAX(p.full_name), MAX(pq.patient_name)) AS patient_name " +
+                     "FROM medical_records mr " +
+                     "LEFT JOIN appointments a ON mr.appointment_id = a.id " +
+                     "LEFT JOIN patients p ON a.patient_id = p.id " +
+                     "LEFT JOIN patient_queue pq ON pq.appointment_id = mr.appointment_id " +
+                     "WHERE mr.id = ? " +
+                     "GROUP BY mr.id, mr.appointment_id, mr.symptoms, mr.diagnosis, mr.record_type, mr.treatment_plan, mr.created_at";
         Connection conn = ConnectionManager.getConnection();
         try {
             PreparedStatement stmt = conn.prepareStatement(sql);
             stmt.setLong(1, id);
             ResultSet rs = stmt.executeQuery();
             if (rs.next()) {
-                return new MedicalRecord(
+                MedicalRecord mr = new MedicalRecord(
                     rs.getLong("id"),
                     rs.getLong("appointment_id"),
                     rs.getString("symptoms"),
@@ -52,6 +58,8 @@ public class MedicalRecordDAO {
                     rs.getString("treatment_plan"),
                     rs.getString("created_at")
                 );
+                mr.setPatientName(rs.getString("patient_name"));
+                return mr;
             }
             return null;
         } finally {
@@ -60,14 +68,20 @@ public class MedicalRecordDAO {
     }
 
     public MedicalRecord findByAppointmentId(long appointmentId) throws SQLException {
-        String sql = "SELECT id, appointment_id, symptoms, diagnosis, record_type, treatment_plan, created_at FROM medical_records WHERE appointment_id = ?";
+        String sql = "SELECT mr.id, mr.appointment_id, mr.symptoms, mr.diagnosis, mr.record_type, mr.treatment_plan, mr.created_at, COALESCE(MAX(p.full_name), MAX(pq.patient_name)) AS patient_name " +
+                     "FROM medical_records mr " +
+                     "LEFT JOIN appointments a ON mr.appointment_id = a.id " +
+                     "LEFT JOIN patients p ON a.patient_id = p.id " +
+                     "LEFT JOIN patient_queue pq ON pq.appointment_id = mr.appointment_id " +
+                     "WHERE mr.appointment_id = ? " +
+                     "GROUP BY mr.id, mr.appointment_id, mr.symptoms, mr.diagnosis, mr.record_type, mr.treatment_plan, mr.created_at";
         Connection conn = ConnectionManager.getConnection();
         try {
             PreparedStatement stmt = conn.prepareStatement(sql);
             stmt.setLong(1, appointmentId);
             ResultSet rs = stmt.executeQuery();
             if (rs.next()) {
-                return new MedicalRecord(
+                MedicalRecord mr = new MedicalRecord(
                     rs.getLong("id"),
                     rs.getLong("appointment_id"),
                     rs.getString("symptoms"),
@@ -76,6 +90,8 @@ public class MedicalRecordDAO {
                     rs.getString("treatment_plan"),
                     rs.getString("created_at")
                 );
+                mr.setPatientName(rs.getString("patient_name"));
+                return mr;
             }
             return null;
         } finally {
@@ -84,14 +100,20 @@ public class MedicalRecordDAO {
     }
 
     public List findAll() throws SQLException {
-        String sql = "SELECT id, appointment_id, symptoms, diagnosis, record_type, treatment_plan, created_at FROM medical_records ORDER BY created_at DESC";
+        String sql = "SELECT mr.id, mr.appointment_id, mr.symptoms, mr.diagnosis, mr.record_type, mr.treatment_plan, mr.created_at, COALESCE(MAX(p.full_name), MAX(pq.patient_name)) AS patient_name " +
+                     "FROM medical_records mr " +
+                     "LEFT JOIN appointments a ON mr.appointment_id = a.id " +
+                     "LEFT JOIN patients p ON a.patient_id = p.id " +
+                     "LEFT JOIN patient_queue pq ON pq.appointment_id = mr.appointment_id " +
+                     "GROUP BY mr.id, mr.appointment_id, mr.symptoms, mr.diagnosis, mr.record_type, mr.treatment_plan, mr.created_at " +
+                     "ORDER BY mr.created_at DESC";
         Connection conn = ConnectionManager.getConnection();
         List records = new ArrayList();
         try {
             PreparedStatement stmt = conn.prepareStatement(sql);
             ResultSet rs = stmt.executeQuery();
             while (rs.next()) {
-                records.add(new MedicalRecord(
+                MedicalRecord mr = new MedicalRecord(
                     rs.getLong("id"),
                     rs.getLong("appointment_id"),
                     rs.getString("symptoms"),
@@ -99,7 +121,40 @@ public class MedicalRecordDAO {
                     rs.getString("record_type"),
                     rs.getString("treatment_plan"),
                     rs.getString("created_at")
-                ));
+                );
+                mr.setPatientName(rs.getString("patient_name"));
+                records.add(mr);
+            }
+            return records;
+        } finally {
+            ConnectionManager.closeConnection(conn);
+        }
+    }
+
+    public List findByPatientId(long patientId) throws SQLException {
+        String sql = "SELECT mr.id, mr.appointment_id, mr.symptoms, mr.diagnosis, mr.record_type, mr.treatment_plan, mr.created_at, p.full_name AS patient_name " +
+                     "FROM medical_records mr " +
+                     "INNER JOIN appointments a ON mr.appointment_id = a.id AND a.patient_id = ? " +
+                     "INNER JOIN patients p ON a.patient_id = p.id " +
+                     "ORDER BY mr.created_at DESC";
+        Connection conn = ConnectionManager.getConnection();
+        List records = new ArrayList();
+        try {
+            PreparedStatement stmt = conn.prepareStatement(sql);
+            stmt.setLong(1, patientId);
+            ResultSet rs = stmt.executeQuery();
+            while (rs.next()) {
+                MedicalRecord mr = new MedicalRecord(
+                    rs.getLong("id"),
+                    rs.getLong("appointment_id"),
+                    rs.getString("symptoms"),
+                    rs.getString("diagnosis"),
+                    rs.getString("record_type"),
+                    rs.getString("treatment_plan"),
+                    rs.getString("created_at")
+                );
+                mr.setPatientName(rs.getString("patient_name"));
+                records.add(mr);
             }
             return records;
         } finally {

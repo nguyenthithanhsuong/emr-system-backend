@@ -32,7 +32,7 @@ public class ReceptionistDAO {
     }
 
     public Receptionist findById(long id) throws SQLException {
-        String sql = "SELECT r.id, r.user_id, u.username, r.full_name, r.department, r.phone, r.email, r.created_at FROM receptionists r LEFT JOIN users u ON r.user_id = u.id WHERE r.id = ?";
+        String sql = "SELECT r.id, r.user_id, u.username, u.status, r.full_name, r.department, r.phone, r.email, r.created_at FROM receptionists r LEFT JOIN users u ON r.user_id = u.id WHERE r.id = ?";
         Connection conn = ConnectionManager.getConnection();
         try {
             PreparedStatement stmt = conn.prepareStatement(sql);
@@ -48,7 +48,8 @@ public class ReceptionistDAO {
                     rs.getString("phone"),
                     rs.getString("email"),
                     null,  // password is not stored in receptionists table
-                    rs.getString("created_at")
+                    rs.getString("created_at"),
+                    rs.getString("status")
                 );
             }
             return null;
@@ -58,7 +59,7 @@ public class ReceptionistDAO {
     }
 
     public List findAll() throws SQLException {
-        String sql = "SELECT r.id, r.user_id, u.username, r.full_name, r.department, r.phone, r.email, r.created_at FROM receptionists r LEFT JOIN users u ON r.user_id = u.id";
+        String sql = "SELECT r.id, r.user_id, u.username, u.status, r.full_name, r.department, r.phone, r.email, r.created_at FROM receptionists r LEFT JOIN users u ON r.user_id = u.id";
         Connection conn = ConnectionManager.getConnection();
         List receptionists = new ArrayList();
         try {
@@ -74,7 +75,8 @@ public class ReceptionistDAO {
                     rs.getString("phone"),
                     rs.getString("email"),
                     null,  // password is not stored in receptionists table
-                    rs.getString("created_at")
+                    rs.getString("created_at"),
+                    rs.getString("status")
                 ));
             }
             return receptionists;

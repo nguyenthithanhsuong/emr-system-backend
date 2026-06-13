@@ -133,6 +133,25 @@ public class MedicineDAO {
         }
     }
 
+    public boolean update(long id, String name, String unit, BigDecimal price, int stockQuantity, String expiryDate, Long categoryId) throws SQLException {
+        String sql = "UPDATE medicines SET name = ?, unit = ?, price = ?, stock_quantity = ?, expiry_date = ?, category_id = ? WHERE id = ?";
+        Connection conn = ConnectionManager.getConnection();
+        try {
+            PreparedStatement stmt = conn.prepareStatement(sql);
+            stmt.setString(1, name);
+            stmt.setString(2, unit);
+            stmt.setBigDecimal(3, price);
+            stmt.setInt(4, stockQuantity);
+            stmt.setTimestamp(5, Timestamp.valueOf(expiryDate + " 00:00:00"));
+            if (categoryId != null && categoryId > 0) stmt.setLong(6, categoryId);
+            else stmt.setNull(6, Types.BIGINT);
+            stmt.setLong(7, id);
+            return stmt.executeUpdate() > 0;
+        } finally {
+            ConnectionManager.closeConnection(conn);
+        }
+    }
+
     public boolean delete(long id) throws SQLException {
         String sql = "DELETE FROM medicines WHERE id = ?";
         Connection conn = ConnectionManager.getConnection();

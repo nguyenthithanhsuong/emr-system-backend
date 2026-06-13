@@ -16,6 +16,7 @@ public class QueueHandler extends BaseHandler {
 
         try {
             if ("GET".equals(method)) {
+                if (!requireRole(exchange, "RECEPTIONIST", "ADMIN", "DOCTOR")) return;
                 handleGetQueue(exchange);
             } else if ("POST".equals(method)) {
                 if (path.endsWith("/remove")) {
@@ -23,7 +24,7 @@ public class QueueHandler extends BaseHandler {
                     long id = extractIdBeforeSegment(path, "/remove");
                     handleRemove(exchange, id);
                 } else if (path.endsWith("/call")) {
-                    if (!requireRole(exchange, "RECEPTIONIST", "ADMIN")) return;
+                    if (!requireRole(exchange, "RECEPTIONIST", "ADMIN", "DOCTOR")) return;
                     long id = extractIdBeforeSegment(path, "/call");
                     handleStatusUpdate(exchange, id, "CALLED", "CALL_QUEUE");
                 } else if (path.endsWith("/start")) {
@@ -202,25 +203,24 @@ public class QueueHandler extends BaseHandler {
     }
 
     private void handleStatusUpdate(HttpExchange exchange, long queueId, String status, String auditAction) throws Exception {
-        String expectedStatus = "IN_PROGRESS".equals(status) ? "CALLED" : null;
         String sql = "UPDATE patient_queue SET status = ? WHERE id = ? AND status <> 'DONE'";
-        if (expectedStatus != null) {
-            sql += " AND status = ?";
+        if ("IN_PROGRESS".equals(status)) {
+            sql += " AND status IN ('WAITING', 'CALLED')";
+        } else if ("CALLED".equals(status)) {
+            sql += " AND status = 'WAITING'";
         }
+        
         Connection conn = ConnectionManager.getConnection();
         try {
             PreparedStatement stmt = conn.prepareStatement(sql);
             stmt.setString(1, status);
             stmt.setLong(2, queueId);
-            if (expectedStatus != null) {
-                stmt.setString(3, expectedStatus);
-            }
             int rows = stmt.executeUpdate();
             if (rows > 0) {
                 logAudit(exchange, auditAction, "queue #" + queueId);
                 sendJson(exchange, getQueueItemJson(queueId), 200);
             } else {
-                sendError(exchange, expectedStatus != null ? "Queue item is not ready to start" : "Queue item not found", 404);
+                sendError(exchange, "Queue item is not ready to start or not found", 404);
             }
         } finally {
             ConnectionManager.closeConnection(conn);

@@ -17,12 +17,67 @@ public class MedicineCategoriesHandler extends BaseHandler {
                 List<MedicineCategory> categories = dao.findAll();
                 String json = listToJson(categories);
                 sendJson(exchange, json, 200);
+            } else if ("POST".equals(method)) {
+                if (!requireRole(exchange, "ADMIN")) return;
+                String body = readBody(exchange);
+                String name = extractString(body, "name");
+                String nameVi = extractString(body, "nameVi");
+                String description = extractString(body, "description");
+                int displayOrder = Integer.parseInt(extractString(body, "displayOrder"));
+
+                long id = dao.create(name, nameVi, description, displayOrder);
+                sendJson(exchange, "{\"id\": " + id + ", \"status\": \"created\"}", 201);
+            } else if ("PUT".equals(method)) {
+                if (!requireRole(exchange, "ADMIN")) return;
+                String path = exchange.getRequestURI().getPath();
+                long id = Long.parseLong(path.substring(path.lastIndexOf('/') + 1));
+                String body = readBody(exchange);
+                String name = extractString(body, "name");
+                String nameVi = extractString(body, "nameVi");
+                String description = extractString(body, "description");
+                int displayOrder = Integer.parseInt(extractString(body, "displayOrder"));
+
+                boolean updated = dao.update(id, name, nameVi, description, displayOrder);
+                if (updated) {
+                    sendJson(exchange, "{\"status\": \"updated\"}", 200);
+                } else {
+                    sendError(exchange, "Category not found", 404);
+                }
+            } else if ("DELETE".equals(method)) {
+                if (!requireRole(exchange, "ADMIN")) return;
+                String path = exchange.getRequestURI().getPath();
+                long id = Long.parseLong(path.substring(path.lastIndexOf('/') + 1));
+                
+                boolean deleted = dao.delete(id);
+                if (deleted) {
+                    sendJson(exchange, "{\"status\": \"deleted\"}", 200);
+                } else {
+                    sendError(exchange, "Category not found", 404);
+                }
             } else {
                 sendError(exchange, "Method not allowed", 405);
             }
         } catch (Exception e) {
             sendError(exchange, e.getMessage(), 500);
         }
+    }
+
+    private String extractString(String json, String key) {
+        String search = "\"" + key + "\":\"";
+        int idx = json.indexOf(search);
+        if (idx == -1) {
+            search = "\"" + key + "\":";
+            idx = json.indexOf(search);
+            if (idx == -1) return "";
+            int start = idx + search.length();
+            int end = json.indexOf(",", start);
+            if (end == -1) end = json.indexOf("}", start);
+            return json.substring(start, end).trim();
+        }
+        int start = idx + search.length();
+        int end = json.indexOf("\"", start);
+        if (end == -1) return "";
+        return json.substring(start, end);
     }
 
     private String toJson(MedicineCategory c) {

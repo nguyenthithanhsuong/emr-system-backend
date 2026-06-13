@@ -68,6 +68,7 @@ public class DoctorsHandler extends BaseHandler {
                 String specialty = extractString(body, "specialty");
                 String email = extractString(body, "email");
                 String roomNumber = extractString(body, "roomNumber");
+                String status = extractString(body, "status");
 
                 DoctorDAO daoLocal = new DoctorDAO();
                 Doctor doctor = daoLocal.findById(id);
@@ -91,6 +92,9 @@ public class DoctorsHandler extends BaseHandler {
                         userDAO.updateUsername(userId, username);
                     } else if (password != null && password.length() > 0) {
                         userDAO.updatePassword(userId, password);
+                    }
+                    if (status != null && status.length() > 0) {
+                        userDAO.updateStatus(userId, status);
                     }
                 }
 
@@ -124,7 +128,8 @@ public class DoctorsHandler extends BaseHandler {
             "\"phone\": \"" + escapeJson(d.getPhone()) + "\", " +
             "\"email\": \"" + escapeJson(d.getEmail()) + "\", " +
             "\"roomNumber\": \"" + escapeJson(d.getRoomNumber()) + "\", " +
-            "\"createdAt\": \"" + escapeJson(d.getCreatedAt()) + "\"" +
+            "\"createdAt\": \"" + escapeJson(d.getCreatedAt()) + "\", " +
+            "\"status\": \"" + escapeJson(d.getStatus()) + "\"" +
             "}";
     }
 

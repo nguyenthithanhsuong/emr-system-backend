@@ -59,9 +59,14 @@ public class MedicinesHandler extends BaseHandler {
             } else if ("PUT".equals(method)) {
                 long id = Long.parseLong(path.substring(15));
                 String body = readBody(exchange);
+                String name = extractString(body, "name");
+                String unit = extractString(body, "unit");
+                BigDecimal price = new BigDecimal(extractString(body, "price"));
                 int newQuantity = Integer.parseInt(extractString(body, "stockQuantity"));
+                String expiry = extractString(body, "expiryDate");
+                Long categoryId = extractNullableLong(body, "categoryId");
 
-                boolean updated = dao.updateStock(id, newQuantity);
+                boolean updated = dao.update(id, name, unit, price, newQuantity, expiry, categoryId);
                 if (updated) {
                     sendJson(exchange, "{\"status\": \"updated\"}", 200);
                 } else {

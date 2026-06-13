@@ -32,6 +32,10 @@ public class PaymentsHandler extends BaseHandler {
             } else if ("POST".equals(method) && path.matches("/api/payments/\\d+/confirm")) {
                 long id = extractIdFromConfirmPath(path);
                 handleConfirm(exchange, id);
+            } else if ("PUT".equals(method) && path.matches("/api/payments/\\d+/cancel")) {
+                if (!requireRole(exchange, "ADMIN")) return;
+                long id = extractIdFromCancelPath(path);
+                handleCancel(exchange, id);
             } else {
                 sendError(exchange, "Method not allowed", 405);
             }
@@ -56,11 +60,31 @@ public class PaymentsHandler extends BaseHandler {
 
         Connection conn = ConnectionManager.getConnection();
         try {
+            // Pre-fetch all details to avoid N+1 queries
+            String detailsSql = "SELECT pd.prescription_id, m.name as medicine_name, pd.quantity, m.price as unit_price " +
+                                "FROM prescription_details pd " +
+                                "LEFT JOIN medicines m ON pd.medicine_id = m.id";
+            PreparedStatement detailsStmt = conn.prepareStatement(detailsSql);
+            ResultSet detailsRs = detailsStmt.executeQuery();
+            
+            java.util.Map<Long, java.util.List<String>> itemsMap = new java.util.HashMap<>();
+            while (detailsRs.next()) {
+                long presId = detailsRs.getLong("prescription_id");
+                String medName = detailsRs.getString("medicine_name");
+                int quantity = detailsRs.getInt("quantity");
+                double unitPrice = detailsRs.getDouble("unit_price");
+                double subtotal = quantity * unitPrice;
+                
+                String itemJson = String.format("{\"medicineName\": \"%s\", \"quantity\": %d, \"unitPrice\": %f, \"subtotal\": %f}",
+                                                escapeJson(medName != null ? medName : "Unknown"), quantity, unitPrice, subtotal);
+                
+                itemsMap.computeIfAbsent(presId, k -> new java.util.ArrayList<>()).add(itemJson);
+            }
+            detailsRs.close();
+            detailsStmt.close();
+
             PreparedStatement stmt = conn.prepareStatement(sql);
             ResultSet rs = stmt.executeQuery();
-
-            PrescriptionDetailDAO detailDao = new PrescriptionDetailDAO();
-            MedicineDAO medDao = new MedicineDAO();
 
             StringBuilder sb = new StringBuilder("[");
             boolean first = true;
@@ -84,8 +108,8 @@ public class PaymentsHandler extends BaseHandler {
                 if (doctorName == null) doctorName = "N/A";
                 if (status == null) status = "PENDING";
 
-                List details = detailDao.findByPrescriptionId(prescriptionId);
-                String itemsJson = buildItemsJson(details, medDao);
+                java.util.List<String> items = itemsMap.get(prescriptionId);
+                String itemsJson = items != null ? "[" + String.join(",", items) + "]" : "[]";
 
                 sb.append("{");
                 sb.append("\"id\": ").append(paymentId).append(", ");
@@ -104,6 +128,9 @@ public class PaymentsHandler extends BaseHandler {
                 sb.append("}");
             }
             sb.append("]");
+            
+            rs.close();
+            stmt.close();
 
             sendJson(exchange, sb.toString(), 200);
         } finally {
@@ -155,6 +182,49 @@ public class PaymentsHandler extends BaseHandler {
         }
     }
 
+    private void handleCancel(HttpExchange exchange, long id) throws Exception {
+        // id is the prescription_id — upsert into payments table or update
+        String checkSql = "SELECT id, payment_status FROM payments WHERE prescription_id = ?";
+        Connection conn = ConnectionManager.getConnection();
+        try {
+            PreparedStatement checkStmt = conn.prepareStatement(checkSql);
+            checkStmt.setLong(1, id);
+            ResultSet rs = checkStmt.executeQuery();
+
+            if (rs.next()) {
+                long payId = rs.getLong("id");
+                String currentStatus = rs.getString("payment_status");
+                if ("CANCELLED".equals(currentStatus)) {
+                    sendError(exchange, "Payment already cancelled", 409);
+                    return;
+                }
+                String updateSql = "UPDATE payments SET payment_status = 'CANCELLED' WHERE id = ?";
+                PreparedStatement updateStmt = conn.prepareStatement(updateSql);
+                updateStmt.setLong(1, payId);
+                updateStmt.executeUpdate();
+            } else {
+                // No payment record yet — create one as CANCELLED
+                String insertSql = "INSERT INTO payments (prescription_id, amount, payment_status) " +
+                    "SELECT id, total_price, 'CANCELLED' FROM prescriptions WHERE id = ?";
+                PreparedStatement insertStmt = conn.prepareStatement(insertSql);
+                insertStmt.setLong(1, id);
+                int rows = insertStmt.executeUpdate();
+                if (rows == 0) {
+                    sendError(exchange, "Prescription not found", 404);
+                    return;
+                }
+            }
+
+            try {
+                AuditLogDAO auditDAO = new AuditLogDAO();
+                auditDAO.log("CANCEL_PAYMENT", getAuthRole(exchange) + ":" + getAuthUserId(exchange), "prescription #" + id);
+            } catch (Exception ignored) {}
+            sendJson(exchange, "{\"status\": \"cancelled\"}", 200);
+        } finally {
+            ConnectionManager.closeConnection(conn);
+        }
+    }
+
     private String buildItemsJson(List details, MedicineDAO medDao) {
         StringBuilder sb = new StringBuilder("[");
         for (int i = 0; i < details.size(); i++) {
@@ -184,6 +254,12 @@ public class PaymentsHandler extends BaseHandler {
 
     private long extractIdFromConfirmPath(String path) {
         // /api/payments/123/confirm
+        String[] parts = path.split("/");
+        return Long.parseLong(parts[3]);
+    }
+
+    private long extractIdFromCancelPath(String path) {
+        // /api/payments/123/cancel
         String[] parts = path.split("/");
         return Long.parseLong(parts[3]);
     }

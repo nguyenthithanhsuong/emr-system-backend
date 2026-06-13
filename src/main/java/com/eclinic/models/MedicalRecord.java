@@ -8,6 +8,7 @@ public class MedicalRecord {
     private String recordType;
     private String treatmentPlan;
     private String createdAt;
+    private String patientName;
 
     public MedicalRecord(long id, long appointmentId, String symptoms, String diagnosis, String recordType, String treatmentPlan, String createdAt) {
         this.id = id;
@@ -20,6 +21,9 @@ public class MedicalRecord {
     }
 
     public MedicalRecord() {}
+
+    public String getPatientName() { return patientName; }
+    public void setPatientName(String patientName) { this.patientName = patientName; }
 
     public long getId() { return id; }
     public void setId(long id) { this.id = id; }

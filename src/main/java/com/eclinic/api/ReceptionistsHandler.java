@@ -67,6 +67,7 @@ public class ReceptionistsHandler extends BaseHandler {
                 String department = extractString(body, "department");
                 String email = extractString(body, "email");
                 String phone = extractString(body, "phone");
+                String status = extractString(body, "status");
 
                 ReceptionistDAO daoLocal = new ReceptionistDAO();
                 Receptionist receptionist = daoLocal.findById(id);
@@ -90,6 +91,9 @@ public class ReceptionistsHandler extends BaseHandler {
                         userDAO.updateUsername(userId, username);
                     } else if (password != null && password.length() > 0) {
                         userDAO.updatePassword(userId, password);
+                    }
+                    if (status != null && status.length() > 0) {
+                        userDAO.updateStatus(userId, status);
                     }
                 }
 
@@ -122,7 +126,8 @@ public class ReceptionistsHandler extends BaseHandler {
             "\"department\": \"" + escapeJson(r.getDepartment()) + "\", " +
             "\"phone\": \"" + escapeJson(r.getPhone()) + "\", " +
             "\"email\": \"" + escapeJson(r.getEmail()) + "\", " +
-            "\"createdAt\": \"" + escapeJson(r.getCreatedAt()) + "\"" +
+            "\"createdAt\": \"" + escapeJson(r.getCreatedAt()) + "\", " +
+            "\"status\": \"" + escapeJson(r.getStatus()) + "\"" +
             "}";
     }
 
