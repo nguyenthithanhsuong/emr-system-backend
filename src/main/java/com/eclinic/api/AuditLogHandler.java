@@ -21,20 +21,27 @@ public class AuditLogHandler extends BaseHandler {
 
         try {
             String timeframe = "all";
+            String startDate = null;
+            String endDate = null;
             String query = exchange.getRequestURI().getQuery();
-            if (query != null && query.contains("timeframe=")) {
+            if (query != null) {
                 for (String param : query.split("&")) {
                     if (param.startsWith("timeframe=")) {
                         timeframe = param.substring("timeframe=".length());
+                    } else if (param.startsWith("startDate=")) {
+                        startDate = param.substring("startDate=".length());
+                    } else if (param.startsWith("endDate=")) {
+                        endDate = param.substring("endDate=".length());
                     }
                 }
             }
 
             AuditLogDAO dao = new AuditLogDAO();
-            List logs = dao.findRecentByTimeframe(50, timeframe);
+            List logs = dao.findRecentByTimeframe(50, timeframe, startDate, endDate);
             String json = listToJson(logs);
             sendJson(exchange, json, 200);
         } catch (Exception e) {
+            e.printStackTrace();
             sendError(exchange, e.getMessage(), 500);
         }
     }

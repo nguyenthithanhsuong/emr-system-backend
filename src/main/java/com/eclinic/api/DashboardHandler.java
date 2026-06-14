@@ -37,12 +37,18 @@ public class DashboardHandler extends BaseHandler {
                 }
             }
 
+            String startDate = null;
+            String endDate = null;
             String timeframe = "today";
             String query = exchange.getRequestURI().getQuery();
-            if (query != null && query.contains("timeframe=")) {
+            if (query != null) {
                 for (String param : query.split("&")) {
                     if (param.startsWith("timeframe=")) {
                         timeframe = param.substring("timeframe=".length());
+                    } else if (param.startsWith("startDate=")) {
+                        startDate = param.substring("startDate=".length());
+                    } else if (param.startsWith("endDate=")) {
+                        endDate = param.substring("endDate=".length());
                     }
                 }
             }
@@ -72,6 +78,13 @@ public class DashboardHandler extends BaseHandler {
                 payDateCond = "1 = 1";
                 presDateCond = "1 = 1";
                 userDateCond = "1 = 1";
+            } else if ("custom".equals(timeframe) && startDate != null && endDate != null) {
+                if (startDate.matches("\\d{4}-\\d{2}-\\d{2}") && endDate.matches("\\d{4}-\\d{2}-\\d{2}")) {
+                    aptDateCond = "DATE(appointment_start_date) >= CAST('" + startDate + "' AS DATE) AND DATE(appointment_start_date) <= CAST('" + endDate + "' AS DATE)";
+                    payDateCond = "DATE(created_at) >= CAST('" + startDate + "' AS DATE) AND DATE(created_at) <= CAST('" + endDate + "' AS DATE)";
+                    presDateCond = "DATE(p.created_at) >= CAST('" + startDate + "' AS DATE) AND DATE(p.created_at) <= CAST('" + endDate + "' AS DATE)";
+                    userDateCond = "DATE(created_at) >= CAST('" + startDate + "' AS DATE) AND DATE(created_at) <= CAST('" + endDate + "' AS DATE)";
+                }
             }
 
             long periodAppointments = 0;
@@ -87,6 +100,7 @@ public class DashboardHandler extends BaseHandler {
             }
 
             StringBuilder topMedicinesJson = new StringBuilder("[");
+            StringBuilder topDoctorsJson = new StringBuilder("[");
 
             java.sql.Connection conn = com.eclinic.database.ConnectionManager.getConnection();
             try {
@@ -149,6 +163,26 @@ public class DashboardHandler extends BaseHandler {
                 }
                 topMedicinesJson.append("]");
 
+                // topDoctors
+                String topDocSql = "SELECT d.full_name as doctor_name, COUNT(a.id) as total_appointments " +
+                                   "FROM doctors d " +
+                                   "JOIN appointments a ON d.id = a.doctor_id " +
+                                   "WHERE a.status = 'COMPLETED' AND " + aptDateCond + " " +
+                                   "GROUP BY d.id, d.full_name " +
+                                   "ORDER BY total_appointments DESC LIMIT 5";
+                java.sql.PreparedStatement stmt6 = conn.prepareStatement(topDocSql);
+                java.sql.ResultSet rs6 = stmt6.executeQuery();
+                boolean firstDoc = true;
+                while (rs6.next()) {
+                    if (!firstDoc) topDoctorsJson.append(",");
+                    topDoctorsJson.append("{");
+                    topDoctorsJson.append("\"name\": \"").append(escapeJson(rs6.getString("doctor_name"))).append("\",");
+                    topDoctorsJson.append("\"appointments\": ").append(rs6.getLong("total_appointments"));
+                    topDoctorsJson.append("}");
+                    firstDoc = false;
+                }
+                topDoctorsJson.append("]");
+
             } finally {
                 com.eclinic.database.ConnectionManager.closeConnection(conn);
             }
@@ -171,7 +205,8 @@ public class DashboardHandler extends BaseHandler {
                 "\"periodRevenue\": " + periodRevenue + ", " +
                 "\"monthlyRevenue\": " + monthlyRevJson.toString() + ", " +
                 "\"unpaidInvoices\": " + unpaidInvoices + ", " +
-                "\"topMedicines\": " + topMedicinesJson.toString() +
+                "\"topMedicines\": " + topMedicinesJson.toString() + ", " +
+                "\"topDoctors\": " + topDoctorsJson.toString() +
                 "}";
 
             sendJson(exchange, json, 200);
