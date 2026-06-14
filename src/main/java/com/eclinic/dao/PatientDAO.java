@@ -121,7 +121,7 @@ public class PatientDAO {
     }
 
     public boolean updateEmail(long id, String email) throws SQLException {
-        String sql = "UPDATE patients SET email = ? WHERE id = ?";
+        String sql = "UPDATE users SET email = ? WHERE id = (SELECT user_id FROM patients WHERE id = ?)";
         Connection conn = ConnectionManager.getConnection();
         try {
             PreparedStatement stmt = conn.prepareStatement(sql);
@@ -154,21 +154,50 @@ public class PatientDAO {
     }
 
     public boolean delete(long id) throws SQLException {
-        String selectSql = "SELECT user_id FROM patients WHERE id = ?";
+        // Lớp bảo vệ 1 (Code logic): Kiểm tra xem bệnh nhân đã có bệnh án chưa.
+        // Nếu có, từ chối xóa ngay lập tức để bảo vệ dữ liệu y tế.
+        String checkRecordsSql = "SELECT 1 FROM medical_records mr JOIN appointments a ON mr.appointment_id = a.id WHERE a.patient_id = ?";
+        
+        String deleteQueueSql = "DELETE FROM patient_queue WHERE patient_id = ?";
+        String deleteApptSql = "DELETE FROM appointments WHERE patient_id = ?";
         String deletePatientSql = "DELETE FROM patients WHERE id = ?";
+        String selectUserSql = "SELECT user_id FROM patients WHERE id = ?";
         String deleteUserSql = "DELETE FROM users WHERE id = ?";
+        
         Connection conn = ConnectionManager.getConnection();
         try {
             conn.setAutoCommit(false);
-            PreparedStatement selectStmt = conn.prepareStatement(selectSql);
+            
+            // 1. Kiểm tra an toàn (Safety Check)
+            PreparedStatement checkStmt = conn.prepareStatement(checkRecordsSql);
+            checkStmt.setLong(1, id);
+            ResultSet checkRs = checkStmt.executeQuery();
+            if (checkRs.next()) {
+                conn.rollback();
+                throw new SQLException("Cannot delete patient: Patient already has medical records.");
+            }
+
+            // 2. Lấy user_id để xóa tài khoản đăng nhập sau cùng
+            PreparedStatement selectStmt = conn.prepareStatement(selectUserSql);
             selectStmt.setLong(1, id);
             ResultSet rs = selectStmt.executeQuery();
             if (!rs.next()) {
                 conn.rollback();
-                return false;
+                return false; // Patient not found
             }
             long userId = rs.getLong("user_id");
+            boolean hasUser = !rs.wasNull();
 
+            // 3. Xóa các dữ liệu rác/lơ lửng (Cascade Delete)
+            PreparedStatement delQueue = conn.prepareStatement(deleteQueueSql);
+            delQueue.setLong(1, id);
+            delQueue.executeUpdate();
+            
+            PreparedStatement delAppt = conn.prepareStatement(deleteApptSql);
+            delAppt.setLong(1, id);
+            delAppt.executeUpdate();
+
+            // 4. Xóa hồ sơ gốc (Patient)
             PreparedStatement delPatient = conn.prepareStatement(deletePatientSql);
             delPatient.setLong(1, id);
             int patientRows = delPatient.executeUpdate();
@@ -178,7 +207,8 @@ public class PatientDAO {
                 return false;
             }
 
-            if (!rs.wasNull()) {
+            // 5. Xóa tài khoản người dùng tương ứng
+            if (hasUser) {
                 PreparedStatement delUser = conn.prepareStatement(deleteUserSql);
                 delUser.setLong(1, userId);
                 int userRows = delUser.executeUpdate();
@@ -193,14 +223,12 @@ public class PatientDAO {
         } catch (SQLException ex) {
             try {
                 conn.rollback();
-            } catch (SQLException ignore) {
-            }
+            } catch (SQLException ignore) {}
             throw ex;
         } finally {
             try {
                 conn.setAutoCommit(true);
-            } catch (SQLException ignore) {
-            }
+            } catch (SQLException ignore) {}
             ConnectionManager.closeConnection(conn);
         }
     }

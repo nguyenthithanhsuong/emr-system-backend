@@ -150,6 +150,10 @@ public class QueueHandler extends BaseHandler {
                 sendError(exchange, "Appointment not found", 404);
                 return;
             }
+            if (appointmentPatientId.longValue() == -1) {
+                sendError(exchange, "Cannot enqueue a cancelled appointment", 400);
+                return;
+            }
             if (patientId <= 0 || appointmentPatientId.longValue() != patientId) {
                 sendError(exchange, "Appointment does not belong to this patient", 400);
                 return;
@@ -290,13 +294,16 @@ public class QueueHandler extends BaseHandler {
     }
 
     private Long getAppointmentPatientId(long appointmentId) throws Exception {
-        String sql = "SELECT patient_id FROM appointments WHERE id = ?";
+        String sql = "SELECT patient_id, status FROM appointments WHERE id = ?";
         Connection conn = ConnectionManager.getConnection();
         try {
             PreparedStatement stmt = conn.prepareStatement(sql);
             stmt.setLong(1, appointmentId);
             ResultSet rs = stmt.executeQuery();
-            if (rs.next()) return Long.valueOf(rs.getLong("patient_id"));
+            if (rs.next()) {
+                if ("CANCELLED".equals(rs.getString("status"))) return Long.valueOf(-1);
+                return Long.valueOf(rs.getLong("patient_id"));
+            }
             return null;
         } finally {
             ConnectionManager.closeConnection(conn);

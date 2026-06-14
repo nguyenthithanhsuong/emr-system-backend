@@ -114,6 +114,17 @@ public class AppointmentsHandler extends BaseHandler {
                     return;
                 }
                 if (updated) {
+                    if ("CANCELLED".equalsIgnoreCase(status)) {
+                        Connection conn = ConnectionManager.getConnection();
+                        try {
+                            PreparedStatement queueStmt = conn.prepareStatement("DELETE FROM patient_queue WHERE appointment_id = ?");
+                            queueStmt.setLong(1, id);
+                            queueStmt.executeUpdate();
+                        } catch (Exception ignored) {
+                        } finally {
+                            ConnectionManager.closeConnection(conn);
+                        }
+                    }
                     sendJson(exchange, toJson(dao.findById(id)), 200);
                 } else {
                     sendError(exchange, "Appointment not found", 404);
@@ -122,6 +133,15 @@ public class AppointmentsHandler extends BaseHandler {
                 long id = parseId(path, "/api/appointments/");
                 boolean deleted = dao.delete(id);
                 if (deleted) {
+                    Connection conn = ConnectionManager.getConnection();
+                    try {
+                        PreparedStatement queueStmt = conn.prepareStatement("DELETE FROM patient_queue WHERE appointment_id = ?");
+                        queueStmt.setLong(1, id);
+                        queueStmt.executeUpdate();
+                    } catch (Exception ignored) {
+                    } finally {
+                        ConnectionManager.closeConnection(conn);
+                    }
                     sendJson(exchange, "{\"status\": \"deleted\"}", 200);
                 } else {
                     sendError(exchange, "Appointment not found", 404);

@@ -65,8 +65,8 @@ public class MedicalRecordsHandler extends BaseHandler {
                     return;
                 }
                 if (recordType.length() == 0) recordType = "GENERAL";
-                if (appointmentId != null && !appointmentExists(appointmentId.longValue())) {
-                    sendError(exchange, "Appointment not found", 404);
+                if (appointmentId != null && !isAppointmentValid(appointmentId.longValue())) {
+                    sendError(exchange, "Appointment not found or is cancelled", 400);
                     return;
                 }
                 if (appointmentId != null) {
@@ -132,14 +132,18 @@ public class MedicalRecordsHandler extends BaseHandler {
         return sb.toString();
     }
 
-    private boolean appointmentExists(long appointmentId) throws Exception {
-        String sql = "SELECT 1 FROM appointments WHERE id = ?";
+    private boolean isAppointmentValid(long appointmentId) throws Exception {
+        String sql = "SELECT status FROM appointments WHERE id = ?";
         Connection conn = ConnectionManager.getConnection();
         try {
             PreparedStatement stmt = conn.prepareStatement(sql);
             stmt.setLong(1, appointmentId);
             ResultSet rs = stmt.executeQuery();
-            return rs.next();
+            if (rs.next()) {
+                String status = rs.getString("status");
+                return !"CANCELLED".equals(status);
+            }
+            return false;
         } finally {
             ConnectionManager.closeConnection(conn);
         }
