@@ -83,16 +83,26 @@ public class AppointmentsHandler extends BaseHandler {
                 String endDate = extractString(body, "appointmentEndDate");
 
                 boolean updated;
-                if (startDate.length() > 0) {
-                    // Reschedule: update dates and optionally status
-                    String effectiveEnd = endDate.length() > 0 ? endDate : startDate;
-                    String effectiveStatus = status.length() > 0 ? status.toUpperCase() : "PENDING";
-                    if (!isValidStatus(effectiveStatus)) {
-                        sendError(exchange, "Invalid appointment status", 400);
-                        return;
-                    }
-                    updated = dao.reschedule(id, startDate, effectiveEnd, effectiveStatus);
-                } else if (status.length() > 0) {
+               if (startDate.length() > 0) {
+    String effectiveEnd = endDate.length() > 0 ? endDate : startDate;
+    String reason = extractString(body, "reason");
+
+    Appointment existing = dao.findById(id);
+    if (existing == null) {
+        sendError(exchange, "Appointment not found", 404);
+        return;
+    }
+
+    String effectiveStatus = status.length() > 0 ? status.toUpperCase() : existing.getStatus();
+    if (!isValidStatus(effectiveStatus)) {
+        sendError(exchange, "Invalid appointment status", 400);
+        return;
+    }
+
+    String effectiveReason = body.contains("\"reason\"") ? reason : existing.getReason();
+
+    updated = dao.reschedule(id, startDate, effectiveEnd, effectiveStatus, effectiveReason);
+} else if (status.length() > 0) {
                     status = status.toUpperCase();
                     if (!isValidStatus(status)) {
                         sendError(exchange, "Invalid appointment status", 400);

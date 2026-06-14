@@ -60,46 +60,52 @@ public class DoctorsHandler extends BaseHandler {
                 String json = "{\"id\": " + id + ", \"status\": \"created\"}";
                 sendJson(exchange, json, 201);
             } else if ("PUT".equals(method)) {
-                long id = Long.parseLong(path.substring(13));
-                String body = readBody(exchange);
-                String username = extractString(body, "username");
-                String password = extractString(body, "password");
-                String fullName = extractString(body, "fullName");
-                String specialty = extractString(body, "specialty");
-                String email = extractString(body, "email");
-                String roomNumber = extractString(body, "roomNumber");
-                String status = extractString(body, "status");
+    long id = Long.parseLong(path.substring(13));
+    String body = readBody(exchange);
+    String username = extractString(body, "username");
+    String password = extractString(body, "password");
+    String fullName = extractString(body, "fullName");
+    String specialty = extractString(body, "specialty");
+    String email = extractString(body, "email");
+    String roomNumber = extractString(body, "roomNumber");
+    String status = extractString(body, "status");
 
-                DoctorDAO daoLocal = new DoctorDAO();
-                Doctor doctor = daoLocal.findById(id);
-                if (doctor == null) {
-                    sendError(exchange, "Doctor not found", 404);
-                    return;
-                }
+    DoctorDAO daoLocal = new DoctorDAO();
+    Doctor doctor = daoLocal.findById(id);
+    if (doctor == null) {
+        sendError(exchange, "Doctor not found", 404);
+        return;
+    }
 
-                boolean doctorUpdated = daoLocal.update(id, fullName, specialty, email, roomNumber);
-                if (!doctorUpdated) {
-                    sendError(exchange, "Failed to update doctor", 500);
-                    return;
-                }
+    // Fallback to existing values when field not provided in payload
+    String newFullName = fullName.length() > 0 ? fullName : doctor.getFullName();
+    String newSpecialty = specialty.length() > 0 ? specialty : doctor.getSpecialty();
+    String newEmail = email.length() > 0 ? email : doctor.getEmail();
+    String newRoomNumber = roomNumber.length() > 0 ? roomNumber : doctor.getRoomNumber();
 
-                Long userId = daoLocal.getUserIdForDoctor(id);
-                if (userId != null) {
-                    UserDAO userDAO = new UserDAO();
-                    if (username != null && username.length() > 0 && password != null && password.length() > 0) {
-                        userDAO.updateUsernameAndPassword(userId, username, password);
-                    } else if (username != null && username.length() > 0) {
-                        userDAO.updateUsername(userId, username);
-                    } else if (password != null && password.length() > 0) {
-                        userDAO.updatePassword(userId, password);
-                    }
-                    if (status != null && status.length() > 0) {
-                        userDAO.updateStatus(userId, status);
-                    }
-                }
+    boolean doctorUpdated = daoLocal.update(id, newFullName, newSpecialty, newEmail, newRoomNumber);
+    if (!doctorUpdated) {
+        sendError(exchange, "Failed to update doctor", 500);
+        return;
+    }
 
-                sendJson(exchange, "{\"status\": \"updated\"}", 200);
-            } else if ("DELETE".equals(method)) {
+    Long userId = daoLocal.getUserIdForDoctor(id);
+    if (userId != null) {
+        UserDAO userDAO = new UserDAO();
+        if (username != null && username.length() > 0 && password != null && password.length() > 0) {
+            userDAO.updateUsernameAndPassword(userId, username, password);
+        } else if (username != null && username.length() > 0) {
+            userDAO.updateUsername(userId, username);
+        } else if (password != null && password.length() > 0) {
+            userDAO.updatePassword(userId, password);
+        }
+        if (status != null && status.length() > 0) {
+            userDAO.updateStatus(userId, status);
+        }
+    }
+
+    sendJson(exchange, "{\"status\": \"updated\"}", 200);
+} else if ("DELETE".equals(method)) {
                 long id = Long.parseLong(path.substring(13));
                 boolean deleted = dao.delete(id);
                 if (deleted) {

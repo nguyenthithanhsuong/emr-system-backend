@@ -141,20 +141,37 @@ public class AppointmentDAO {
     }
 
     public boolean reschedule(long id, String startDate, String endDate, String status) throws SQLException {
-        String sql = "UPDATE appointments SET appointment_start_date = ?, appointment_end_date = ?, status = ? WHERE id = ?";
-        Connection conn = ConnectionManager.getConnection();
-        try {
-            PreparedStatement stmt = conn.prepareStatement(sql);
-            stmt.setTimestamp(1, parseTimestamp(startDate));
-            stmt.setTimestamp(2, parseTimestamp(endDate));
-            stmt.setString(3, status);
-            stmt.setLong(4, id);
-            int rows = stmt.executeUpdate();
-            return rows > 0;
-        } finally {
-            ConnectionManager.closeConnection(conn);
-        }
+    String sql = "UPDATE appointments SET appointment_start_date = ?, appointment_end_date = ?, status = ? WHERE id = ?";
+    Connection conn = ConnectionManager.getConnection();
+    try {
+        PreparedStatement stmt = conn.prepareStatement(sql);
+        stmt.setTimestamp(1, parseTimestamp(startDate));
+        stmt.setTimestamp(2, parseTimestamp(endDate));
+        stmt.setString(3, status);
+        stmt.setLong(4, id);
+        int rows = stmt.executeUpdate();
+        return rows > 0;
+    } finally {
+        ConnectionManager.closeConnection(conn);
     }
+}
+
+public boolean reschedule(long id, String startDate, String endDate, String status, String reason) throws SQLException {
+    String sql = "UPDATE appointments SET appointment_start_date = ?, appointment_end_date = ?, status = ?, reason = ? WHERE id = ?";
+    Connection conn = ConnectionManager.getConnection();
+    try {
+        PreparedStatement stmt = conn.prepareStatement(sql);
+        stmt.setTimestamp(1, parseTimestamp(startDate));
+        stmt.setTimestamp(2, parseTimestamp(endDate));
+        stmt.setString(3, status);
+        stmt.setString(4, reason);
+        stmt.setLong(5, id);
+        int rows = stmt.executeUpdate();
+        return rows > 0;
+    } finally {
+        ConnectionManager.closeConnection(conn);
+    }
+}
 
     /**
      * Parse a date string that may be ISO-8601 (from frontend) or 'yyyy-MM-dd HH:mm:ss' (legacy).

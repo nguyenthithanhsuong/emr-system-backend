@@ -76,7 +76,12 @@ public class ReceptionistsHandler extends BaseHandler {
                     return;
                 }
 
-                boolean updated = daoLocal.update(id, fullName, department, email, phone);
+                String newFullName = fullName.length() > 0 ? fullName : receptionist.getFullName();
+                String newDepartment = department.length() > 0 ? department : receptionist.getDepartment();
+                String newEmail = email.length() > 0 ? email : receptionist.getEmail();
+                String newPhone = phone.length() > 0 ? phone : receptionist.getPhone();
+
+                boolean updated = daoLocal.update(id, newFullName, newDepartment, newEmail, newPhone);
                 if (!updated) {
                     sendError(exchange, "Failed to update receptionist", 500);
                     return;
@@ -97,8 +102,9 @@ public class ReceptionistsHandler extends BaseHandler {
                     }
                 }
 
-                sendJson(exchange, "{\"status\": \"updated\"}", 200);
-            } else if ("DELETE".equals(method)) {
+                sendJson(exchange, "{\"status\": \"updated\"}", 200); 
+            }
+                else if ("DELETE".equals(method)) {
                 long id = Long.parseLong(path.substring(19));
                 boolean deleted = dao.delete(id);
                 if (deleted) {

@@ -75,8 +75,9 @@ public class PaymentsHandler extends BaseHandler {
                 double unitPrice = detailsRs.getDouble("unit_price");
                 double subtotal = quantity * unitPrice;
                 
-                String itemJson = String.format("{\"medicineName\": \"%s\", \"quantity\": %d, \"unitPrice\": %f, \"subtotal\": %f}",
-                                                escapeJson(medName != null ? medName : "Unknown"), quantity, unitPrice, subtotal);
+                String itemJson = String.format(java.util.Locale.US,
+    "{\"medicineName\": \"%s\", \"quantity\": %d, \"unitPrice\": %f, \"subtotal\": %f}",
+    escapeJson(medName != null ? medName : "Unknown"), quantity, unitPrice, subtotal);
                 
                 itemsMap.computeIfAbsent(presId, k -> new java.util.ArrayList<>()).add(itemJson);
             }
