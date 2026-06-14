@@ -58,10 +58,10 @@ public class DashboardHandler extends BaseHandler {
                 presDateCond = "p.created_at >= CURRENT_DATE - INTERVAL '7 days'";
                 userDateCond = "created_at >= CURRENT_DATE - INTERVAL '7 days'";
             } else if ("month".equals(timeframe)) {
-                aptDateCond = "EXTRACT(MONTH FROM appointment_start_date) = EXTRACT(MONTH FROM CURRENT_DATE) AND EXTRACT(YEAR FROM appointment_start_date) = EXTRACT(YEAR FROM CURRENT_DATE)";
-                payDateCond = "EXTRACT(MONTH FROM created_at) = EXTRACT(MONTH FROM CURRENT_DATE) AND EXTRACT(YEAR FROM created_at) = EXTRACT(YEAR FROM CURRENT_DATE)";
-                presDateCond = "EXTRACT(MONTH FROM p.created_at) = EXTRACT(MONTH FROM CURRENT_DATE) AND EXTRACT(YEAR FROM p.created_at) = EXTRACT(YEAR FROM CURRENT_DATE)";
-                userDateCond = "EXTRACT(MONTH FROM created_at) = EXTRACT(MONTH FROM CURRENT_DATE) AND EXTRACT(YEAR FROM created_at) = EXTRACT(YEAR FROM CURRENT_DATE)";
+                aptDateCond = "appointment_start_date >= CURRENT_DATE - INTERVAL '30 days'";
+                payDateCond = "created_at >= CURRENT_DATE - INTERVAL '30 days'";
+                presDateCond = "p.created_at >= CURRENT_DATE - INTERVAL '30 days'";
+                userDateCond = "created_at >= CURRENT_DATE - INTERVAL '30 days'";
             } else if ("year".equals(timeframe)) {
                 aptDateCond = "EXTRACT(YEAR FROM appointment_start_date) = EXTRACT(YEAR FROM CURRENT_DATE)";
                 payDateCond = "EXTRACT(YEAR FROM created_at) = EXTRACT(YEAR FROM CURRENT_DATE)";
@@ -165,10 +165,10 @@ public class DashboardHandler extends BaseHandler {
                 "\"totalDoctors\": " + totalDoctors + ", " +
                 "\"totalPatients\": " + totalPatients + ", " +
                 "\"newPatients\": " + newPatients + ", " +
-                "\"todayAppointments\": " + periodAppointments + ", " +
+                "\"periodAppointments\": " + periodAppointments + ", " +
                 "\"completedAppointments\": " + completedAppointments + ", " +
                 "\"revenue\": " + totalRevenue + ", " +
-                "\"todayRevenue\": " + periodRevenue + ", " +
+                "\"periodRevenue\": " + periodRevenue + ", " +
                 "\"monthlyRevenue\": " + monthlyRevJson.toString() + ", " +
                 "\"unpaidInvoices\": " + unpaidInvoices + ", " +
                 "\"topMedicines\": " + topMedicinesJson.toString() +

@@ -47,4 +47,38 @@ public class AuditLogDAO {
             ConnectionManager.closeConnection(conn);
         }
     }
+
+    public List findRecentByTimeframe(int limit, String timeframe) throws SQLException {
+        String dateCond = "DATE(created_at) = CURRENT_DATE";
+        if ("week".equals(timeframe)) {
+            dateCond = "created_at >= CURRENT_DATE - INTERVAL '7 days'";
+        } else if ("month".equals(timeframe)) {
+            dateCond = "created_at >= CURRENT_DATE - INTERVAL '30 days'";
+        } else if ("year".equals(timeframe)) {
+            dateCond = "EXTRACT(YEAR FROM created_at) = EXTRACT(YEAR FROM CURRENT_DATE)";
+        } else if ("all".equals(timeframe)) {
+            dateCond = "1 = 1";
+        }
+
+        String sql = "SELECT id, action, actor, target, created_at FROM audit_logs WHERE " + dateCond + " ORDER BY created_at DESC LIMIT ?";
+        Connection conn = ConnectionManager.getConnection();
+        List logs = new ArrayList();
+        try {
+            PreparedStatement stmt = conn.prepareStatement(sql);
+            stmt.setInt(1, limit);
+            ResultSet rs = stmt.executeQuery();
+            while (rs.next()) {
+                logs.add(new AuditLog(
+                    rs.getLong("id"),
+                    rs.getString("action"),
+                    rs.getString("actor"),
+                    rs.getString("target"),
+                    rs.getString("created_at")
+                ));
+            }
+            return logs;
+        } finally {
+            ConnectionManager.closeConnection(conn);
+        }
+    }
 }
