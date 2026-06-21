@@ -113,6 +113,53 @@ public class AppointmentDAO {
         }
     }
 
+public List findAllWithDetails() throws SQLException {
+    String sql = "SELECT a.id, a.doctor_id, a.patient_id, a.appointment_start_date, " +
+        "a.appointment_end_date, a.reason, a.status, a.created_at, " +
+        "p.full_name AS patient_name, d.full_name AS doctor_name, " +
+        "pq.id AS queue_id, " +
+        "(SELECT COUNT(*) FROM patient_queue q2 WHERE q2.status = 'WAITING' AND q2.enqueued_at <= pq.enqueued_at) AS queue_position " +
+        "FROM appointments a " +
+        "JOIN patients p ON a.patient_id = p.id " +
+        "JOIN doctors d ON a.doctor_id = d.id " +
+        "LEFT JOIN patient_queue pq ON pq.appointment_id = a.id AND pq.status = 'WAITING' " +
+        "ORDER BY a.appointment_start_date DESC";
+    Connection conn = ConnectionManager.getConnection();
+    List results = new ArrayList();
+    try {
+        PreparedStatement stmt = conn.prepareStatement(sql);
+        ResultSet rs = stmt.executeQuery();
+        while (rs.next()) {
+            AppointmentWithDetails dto = new AppointmentWithDetails();
+            dto.id = rs.getLong("id");
+            dto.doctorId = rs.getLong("doctor_id");
+            dto.patientId = rs.getLong("patient_id");
+            dto.appointmentStartDate = rs.getString("appointment_start_date");
+            dto.appointmentEndDate = rs.getString("appointment_end_date");
+            dto.reason = rs.getString("reason");
+            dto.status = rs.getString("status");
+            dto.createdAt = rs.getString("created_at");
+            dto.patientName = rs.getString("patient_name");
+            dto.doctorName = rs.getString("doctor_name");
+            long queueId = rs.getLong("queue_id");
+            if (!rs.wasNull()) dto.queueId = Long.valueOf(queueId);
+            long position = rs.getLong("queue_position");
+            if (!rs.wasNull()) dto.queuePosition = Long.valueOf(position);
+            results.add(dto);
+        }
+        return results;
+    } finally {
+        ConnectionManager.closeConnection(conn);
+    }
+}
+
+public static class AppointmentWithDetails {
+    public long id, doctorId, patientId;
+    public String appointmentStartDate, appointmentEndDate, reason, status, createdAt;
+    public String patientName, doctorName;
+    public Long queueId, queuePosition;
+}
+
     public boolean updateStatus(long id, String newStatus) throws SQLException {
         String sql = "UPDATE appointments SET status = ? WHERE id = ?";
         Connection conn = ConnectionManager.getConnection();

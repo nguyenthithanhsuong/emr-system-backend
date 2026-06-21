@@ -45,8 +45,8 @@ public class AppointmentsHandler extends BaseHandler {
                     String json = listToJson(appointments);
                     sendJson(exchange, json, 200);
                 } else {
-                    List appointments = dao.findAll();
-                    String json = listToJson(appointments);
+                    List appointments = dao.findAllWithDetails();
+                    String json = detailsListToJson(appointments);
                     sendJson(exchange, json, 200);
                 }
             } else if ("POST".equals(method)) {
@@ -182,6 +182,30 @@ public class AppointmentsHandler extends BaseHandler {
         sb.append("]");
         return sb.toString();
     }
+
+    private String detailsListToJson(List appointments) throws Exception {
+    StringBuilder sb = new StringBuilder("[");
+    for (int i = 0; i < appointments.size(); i++) {
+        if (i > 0) sb.append(",");
+        AppointmentDAO.AppointmentWithDetails a = (AppointmentDAO.AppointmentWithDetails) appointments.get(i);
+        sb.append("{")
+          .append("\"id\": ").append(a.id).append(", ")
+          .append("\"doctorId\": ").append(a.doctorId).append(", ")
+          .append("\"patientId\": ").append(a.patientId).append(", ")
+          .append("\"doctorName\": \"").append(escapeJson(a.doctorName)).append("\", ")
+          .append("\"patientName\": \"").append(escapeJson(a.patientName)).append("\", ")
+          .append("\"queueId\": ").append(a.queueId != null ? a.queueId.toString() : "null").append(", ")
+          .append("\"queuePosition\": ").append(a.queuePosition != null ? a.queuePosition.toString() : "null").append(", ")
+          .append("\"appointmentStartDate\": \"").append(escapeJson(a.appointmentStartDate)).append("\", ")
+          .append("\"appointmentEndDate\": \"").append(escapeJson(a.appointmentEndDate)).append("\", ")
+          .append("\"reason\": \"").append(escapeJson(a.reason)).append("\", ")
+          .append("\"status\": \"").append(escapeJson(a.status)).append("\", ")
+          .append("\"createdAt\": \"").append(escapeJson(a.createdAt)).append("\"")
+          .append("}");
+    }
+    sb.append("]");
+    return sb.toString();
+}
 
     private List findAppointments(Map<String, String> params) throws Exception {
         if (params.containsKey("patientId")) {
