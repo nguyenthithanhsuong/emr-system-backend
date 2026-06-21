@@ -1,15 +1,14 @@
 package com.eclinic.api;
 
 import com.sun.net.httpserver.HttpExchange;
-import com.eclinic.database.ConnectionManager;
+import com.eclinic.dao.PrescriptionTemplateDAO;
+import com.eclinic.models.PrescriptionTemplate;
 import java.io.IOException;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.util.ArrayList;
 import java.util.List;
 
 public class PrescriptionTemplatesHandler extends BaseHandler {
+
+    private final PrescriptionTemplateDAO dao = new PrescriptionTemplateDAO();
 
     protected void handleRequest(HttpExchange exchange) throws IOException {
         String method = exchange.getRequestMethod();
@@ -41,35 +40,18 @@ public class PrescriptionTemplatesHandler extends BaseHandler {
     }
 
     private void handleGetAll(HttpExchange exchange) throws Exception {
-        String sql = "SELECT id, doctor_id, name, items, created_at FROM prescription_templates ORDER BY created_at DESC";
-        Connection conn = ConnectionManager.getConnection();
-        try {
-            PreparedStatement stmt = conn.prepareStatement(sql);
-            ResultSet rs = stmt.executeQuery();
-            String json = resultSetToJson(rs);
-            sendJson(exchange, json, 200);
-        } finally {
-            ConnectionManager.closeConnection(conn);
-        }
+        List<PrescriptionTemplate> templates = dao.findAll();
+        sendJson(exchange, toJsonArray(templates), 200);
     }
 
     private void handleGetByDoctor(HttpExchange exchange, long doctorId) throws Exception {
-        String sql = "SELECT id, doctor_id, name, items, created_at FROM prescription_templates WHERE doctor_id = ? ORDER BY created_at DESC";
-        Connection conn = ConnectionManager.getConnection();
-        try {
-            PreparedStatement stmt = conn.prepareStatement(sql);
-            stmt.setLong(1, doctorId);
-            ResultSet rs = stmt.executeQuery();
-            String json = resultSetToJson(rs);
-            sendJson(exchange, json, 200);
-        } finally {
-            ConnectionManager.closeConnection(conn);
-        }
+        List<PrescriptionTemplate> templates = dao.findByDoctorId(doctorId);
+        sendJson(exchange, toJsonArray(templates), 200);
     }
 
     private void handleCreate(HttpExchange exchange) throws Exception {
         String body = readBody(exchange);
-        long doctorId = extractLong(body, "doctorId");
+        long doctorIdRaw = extractLong(body, "doctorId");
         String name = extractString(body, "name");
         String items = extractJsonArray(body, "items");
 
@@ -78,51 +60,39 @@ public class PrescriptionTemplatesHandler extends BaseHandler {
             return;
         }
 
-        String sql = "INSERT INTO prescription_templates (doctor_id, name, items) VALUES (?, ?, ?::jsonb) RETURNING id";
-        Connection conn = ConnectionManager.getConnection();
-        try {
-            PreparedStatement stmt = conn.prepareStatement(sql);
-            stmt.setLong(1, doctorId);
-            stmt.setString(2, name);
-            stmt.setString(3, items.isEmpty() ? "[]" : items);
-            ResultSet rs = stmt.executeQuery();
-            if (rs.next()) {
-                sendJson(exchange, "{\"id\": " + rs.getLong(1) + ", \"status\": \"created\"}", 201);
-            }
-        } finally {
-            ConnectionManager.closeConnection(conn);
-        }
+        // doctorId is nullable in the DB; treat a missing/0 value as null
+        // rather than silently inserting 0 as a real doctor id.
+        Long doctorId = doctorIdRaw == 0 ? null : doctorIdRaw;
+
+        long id = dao.create(doctorId, name, items);
+        sendJson(exchange, "{\"id\": " + id + ", \"status\": \"created\"}", 201);
     }
 
     private void handleDelete(HttpExchange exchange, long id) throws Exception {
-        String sql = "DELETE FROM prescription_templates WHERE id = ?";
-        Connection conn = ConnectionManager.getConnection();
-        try {
-            PreparedStatement stmt = conn.prepareStatement(sql);
-            stmt.setLong(1, id);
-            int rows = stmt.executeUpdate();
-            if (rows > 0) {
-                sendJson(exchange, "{\"status\": \"deleted\"}", 200);
-            } else {
-                sendError(exchange, "Template not found", 404);
-            }
-        } finally {
-            ConnectionManager.closeConnection(conn);
+        // TODO: verify the requesting doctor owns this template before deleting,
+        // e.g. compare dao.findById(id).getDoctorId() against the caller's id
+        // from the session/JWT, once BaseHandler exposes that. Currently any
+        // DOCTOR/ADMIN can delete any template.
+        boolean deleted = dao.delete(id);
+        if (deleted) {
+            sendJson(exchange, "{\"status\": \"deleted\"}", 200);
+        } else {
+            sendError(exchange, "Template not found", 404);
         }
     }
 
-    private String resultSetToJson(ResultSet rs) throws Exception {
+    private String toJsonArray(List<PrescriptionTemplate> templates) {
         StringBuilder sb = new StringBuilder("[");
         boolean first = true;
-        while (rs.next()) {
+        for (PrescriptionTemplate t : templates) {
             if (!first) sb.append(",");
             first = false;
             sb.append("{");
-            sb.append("\"id\": ").append(rs.getLong("id")).append(", ");
-            sb.append("\"doctorId\": ").append(rs.getLong("doctor_id")).append(", ");
-            sb.append("\"name\": \"").append(escapeJson(rs.getString("name"))).append("\", ");
-            sb.append("\"items\": ").append(rs.getString("items")).append(", ");
-            sb.append("\"createdAt\": \"").append(escapeJson(rs.getString("created_at"))).append("\"");
+            sb.append("\"id\": ").append(t.getId()).append(", ");
+            sb.append("\"doctorId\": ").append(t.getDoctorId() == null ? "null" : t.getDoctorId()).append(", ");
+            sb.append("\"name\": \"").append(escapeJson(t.getName())).append("\", ");
+            sb.append("\"items\": ").append(t.getItems()).append(", ");
+            sb.append("\"createdAt\": \"").append(escapeJson(t.getCreatedAt())).append("\"");
             sb.append("}");
         }
         sb.append("]");
